@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAGCC Court Schedule</title>
+  <style>
+    :root {
+      --bg: #f3eee4;
+      --surface: #fffdf9;
+      --text: #4b3528;
+      --muted: #756659;
+      --border: #cdbfae;
+      --booked: #6f8065;
+      --cancelled: #C53030;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 44px 40px 52px;
+      width: 100%;
+    }
+    h1 {
+      margin: 0 auto;
+      font-size: 40px;
+      font-weight: 800;
+      color: var(--text);
+      text-align: center;
+      width: 100%;
+    }
+    .subtitle {
+      margin: 8px auto 0;
+      font-size: 17px;
+      color: var(--muted);
+      text-align: center;
+      width: 100%;
+    }
+    .toolbar {
+      margin: 28px auto 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      width: 100%;
+    }
+      width: 100%;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    button, .date-input {
+      height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+      padding: 0 10px;
+    }
+    button:hover {
+      background: #f9f5ed;
+    }
+    .date-input {
+      width: 150px;
+      padding: 0 12px;
+    }
+    .long-date {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+      margin: 0 auto 12px;
+      width: 100%;
+    }
+    .legend {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      margin: 20px auto 18px;
+      font-size: 14px;
+      font-weight: 650;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid #d8c992;
+    }
+    .swatch.open { background: #f7edc9; }
+    .swatch.booked { background: var(--booked); border-color: var(--booked); }
+    .swatch.cancelled { background: var(--cancelled); border-color: var(--cancelled); }
+    .schedule {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(75,53,40,.08);
+      overflow: auto;
+      position: relative;
+      width: 100%;
+      margin: 0 auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    thead th {
+      height: 48px;
+      padding: 0 12px;
+      text-align: left;
+      background: #f8f4ec;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      font-weight: 750;
+    }
+    thead th:first-child { width: 118px; }
+    tbody td {
+      height: 64px;
+      padding: 7px;
+      border-bottom: 1px solid #ece4da;
+      vertical-align: middle;
+    }
+    tbody tr:last-child td { border-bottom: 0; }
+    .time {
+      padding-left: 12px;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .slot {
+      height: 50px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      border: 1px solid #ded1a5;
+      border-radius: 8px;
+      background: #f7edc9;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 650;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.12s, border-color 0.12s;
+      position: relative;
+    }
+    .slot:hover { background: #f3e5b2; border-color: #cdbb7e; }
+    .slot.booked {
+      background: var(--booked);
+      border-color: var(--booked);
+      color: #fff;
+      position: relative;
+    }
+    
+    .slot.booked.has-note {
+      border: 2px solid #fff;
+      box-shadow: inset 0 0 0 2px var(--booked);
+    }
+    
+    /* Coach color coding */
+    .slot.coach-anjali {
+      background: #3D5A6D;
+      border-color: #3D5A6D;
+      color: #fff;
+    }
+    
+    .slot.coach-anjali.has-note {
+      box-shadow: inset 0 0 0 2px #3D5A6D;
+    }
+    
+    .slot.coach-alena {
+      background: #6D4C5C;
+      border-color: #6D4C5C;
+      color: #fff;
+    }
+    
+    .slot.coach-alena.has-note {
+      box-shadow: inset 0 0 0 2px #6D4C5C;
+    }
+    
+    .slot.coach-lou {
+      background: #3D4F40;
+      border-color: #3D4F40;
+      color: #fff;
+    }
+    
+    .slot.coach-lou.has-note {
+      box-shadow: inset 0 0 0 2px #3D4F40;
+    }
+    
+    .slot.coach-byron {
+      background: #2F1F0F;
+      border-color: #2F1F0F;
+      color: #fff;
+    }
+    
+    .slot.coach-byron.has-note {
+      box-shadow: inset 0 0 0 2px #2F1F0F;
+    }
+    
+    .slot.coach-jack {
+      background: #4D5560;
+      border-color: #4D5560;
+      color: #fff;
+    }
+    
+    .slot.coach-jack.has-note {
+      box-shadow: inset 0 0 0 2px #4D5560;
+    }
+    
+    .note-bubble {
+      position: fixed;
+      background: var(--surface);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      z-index: 1000;
+      max-width: 250px;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      box-shadow: 0 4px 12px rgba(75, 53, 40, 0.15);
+      animation: bubbleIn 0.15s ease-out;
+    }
+    
+    @keyframes bubbleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    .slot.cancelled {
+      background: var(--cancelled);
+      border-color: var(--cancelled);
+      color: #fff;
+    }
+    .slot.active { outline: 2px solid #8e6f57; outline-offset: 2px; }
+    .menu {
+      position: absolute;
+      z-index: 50;
+      width: 300px;
+      display: none;
+      padding: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 12px 28px rgba(75,53,40,.16);
+      pointer-events: auto;
+    }
+    .menu.show { display: block; }
+    .menu-label {
+      padding: 6px 8px 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .coaches-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .coaches-grid button {
+      width: 100%;
+      height: 36px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      text-align: left;
+      padding: 0 9px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .coaches-grid button:hover {
+      background: #f9f5ed;
+    }
+    .menu button {
+      width: 100%;
+      height: 36px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      text-align: left;
+      padding: 0 9px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .menu button:hover { background: #f6f1e8; }
+    .menu .danger { 
+      background: #fee2e2 !important;
+      color: #991b1b !important;
+      font-weight: 700;
+    }
+    .menu-sep { height: 1px; background: #eee6dc; margin: 5px 0; }
+
+    /* Modal styles */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(45, 34, 27, .32);
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      width: min(420px, 100%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 18px 48px rgba(75,53,40,.2);
+      padding: 22px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal h2 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      color: var(--text);
+    }
+    .form-row {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+    .form-row label {
+      font-size: 13px;
+      font-weight: 750;
+      color: var(--text);
+    }
+    .form-row select, .form-row input, .form-row textarea {
+      width: 100%;
+      height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      padding: 0 11px;
+      font: inherit;
+    }
+    .form-row textarea {
+      height: auto;
+      padding: 11px;
+      line-height: 1.4;
+    }
+    .weekday-picker {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+    .weekday-picker label {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 42px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 750;
+      cursor: pointer;
+      user-select: none;
+    }
+    .weekday-picker input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .weekday-picker label:has(input:checked) {
+      background: var(--text);
+      border-color: var(--text);
+      color: #fff;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .modal-actions button {
+      height: 40px;
+      padding: 0 20px;
+    }
+    .modal-actions .primary {
+      background: var(--text);
+      border-color: var(--text);
+      color: #fff;
+    }
+    .modal-actions .primary:hover { background: #38271f; }
+  </style>
+  <!-- Firebase SDK for browsers -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div class="page">
+    <div style="position: relative; margin-bottom: 30px;">
+      <div style="text-align: center;">
+        <h1>LAGCC Court Schedule</h1>
+        <p class="subtitle">Courts 4, 5 & 6 — click a slot to book or cancel</p>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="long-date" id="longDate"></div>
+      <div class="controls">
+        <button id="prevDay">←</button>
+        <input class="date-input" id="dateInput" type="date" />
+        <button id="nextDay">→</button>
+        <button id="todayBtn">Today</button>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="swatch open"></span>Open</div>
+      <div class="legend-item"><span class="swatch cancelled"></span>Cancelled</div>
+    </div>
+
+    <div class="schedule" id="scheduleWrap">
+      <table>
+        <thead><tr id="headerRow"></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="menu" id="menu">
+        <div class="menu-label">Assign coach:</div>
+        <div class="coaches-grid">
+          <button data-coach="Anjali">Anjali</button>
+          <button data-coach="Alena">Alena</button>
+          <button data-coach="Lou">Lou</button>
+          <button data-coach="Byron">Byron</button>
+          <button data-coach="Jack">Jack</button>
+        </div>
+        <div class="menu-sep"></div>
+        <button id="cancelBooking" class="danger">Cancel booking</button>
+        <button id="resetOpen">Clear / reset to open</button>
+        <button id="cancelRecurring" class="danger" style="display:none;">Cancel recurring series</button>
+        <div class="menu-sep"></div>
+        <button id="makeRecurringBtn">↻ Make recurring...</button>
+        <div class="menu-sep"></div>
+        <div class="menu-label">Optional note:</div>
+        <textarea id="slotNote" placeholder="e.g., Clinic, Private lesson, Special instructions..." style="width: 100%; padding: 8px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; resize: vertical; min-height: 70px; font-family: inherit;"></textarea>
+        <div class="menu-sep"></div>
+        <button id="closeMenu">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recurring Modal -->
+  <div class="modal-backdrop" id="recurringBackdrop">
+    <div class="modal">
+      <h2>New Recurring Booking</h2>
+      <div class="form-row">
+        <label>Court</label>
+        <select id="recurringCourt">
+          <option value="4">Court 4</option>
+          <option value="5">Court 5</option>
+          <option value="6">Court 6</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Time</label>
+        <select id="recurringTime">
+          <option value="06:00">6:00 AM</option>
+          <option value="07:00">7:00 AM</option>
+          <option value="08:00">8:00 AM</option>
+          <option value="09:00">9:00 AM</option>
+          <option value="10:00">10:00 AM</option>
+          <option value="11:00">11:00 AM</option>
+          <option value="12:00">12:00 PM</option>
+          <option value="13:00">1:00 PM</option>
+          <option value="14:00">2:00 PM</option>
+          <option value="15:00">3:00 PM</option>
+          <option value="16:00">4:00 PM</option>
+          <option value="17:00">5:00 PM</option>
+          <option value="18:00">6:00 PM</option>
+          <option value="19:00">7:00 PM</option>
+          <option value="20:00">8:00 PM</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Coach</label>
+        <select id="recurringCoach">
+          <option value="Anjali">Anjali</option>
+          <option value="Alena">Alena</option>
+          <option value="Lou">Lou</option>
+          <option value="Byron">Byron</option>
+          <option value="Jack">Jack</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Start Date</label>
+        <input type="date" id="recurringStart" />
+      </div>
+      <div class="form-row">
+        <label>End Date</label>
+        <input type="date" id="recurringEnd" />
+      </div>
+      <div class="form-row">
+        <label>Days of Week</label>
+        <div class="weekday-picker">
+          <label><input type="checkbox" value="0"> Sun</label>
+          <label><input type="checkbox" value="1"> Mon</label>
+          <label><input type="checkbox" value="2"> Tue</label>
+          <label><input type="checkbox" value="3"> Wed</label>
+          <label><input type="checkbox" value="4"> Thu</label>
+          <label><input type="checkbox" value="5"> Fri</label>
+          <label><input type="checkbox" value="6"> Sat</label>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Frequency</label>
+        <select id="recurringFrequency">
+          <option value="weekly">Weekly</option>
+          <option value="biweekly">Every 2 weeks</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Optional Note</label>
+        <textarea id="recurringNote" placeholder="e.g., Clinic, Private lesson, Special instructions..." style="resize: vertical; min-height: 100px; padding: 8px 9px; font-family: inherit;"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button id="recurringCancel">Cancel</button>
+        <button class="primary" id="recurringSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Firebase Configuration - Using Realtime Database directly
+    let database = null;
+
+    // Wait for Firebase SDK to load
+    function initFirebase() {
+      if (typeof firebase === 'undefined') {
+        setTimeout(initFirebase, 100);
+        return;
+      }
+      
+      const firebaseConfig = {
+        databaseURL: "https://lagcc-court-schedule-default-rtdb.firebaseio.com"
+      };
+
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+      database = firebase.database();
+      
+      // Start the app
+      initApp();
+    }
+
+    function initApp() {
+      const times = [
+      ['06:00','6:00 AM'], ['07:00','7:00 AM'], ['08:00','8:00 AM'], ['09:00','9:00 AM'], ['10:00','10:00 AM'],
+      ['11:00','11:00 AM'], ['12:00','12:00 PM'], ['13:00','1:00 PM'], ['14:00','2:00 PM'], ['15:00','3:00 PM'],
+      ['16:00','4:00 PM'], ['17:00','5:00 PM'], ['18:00','6:00 PM'], ['19:00','7:00 PM'], ['20:00','8:00 PM']
+    ];
+    const courts = ['4', '5', '6'];
+    
+    const dateInput = document.getElementById('dateInput');
+    const longDate = document.getElementById('longDate');
+    const headerRow = document.getElementById('headerRow');
+    const tableBody = document.getElementById('tableBody');
+    const menu = document.getElementById('menu');
+    const recurringBackdrop = document.getElementById('recurringBackdrop');
+    const cancelRecurringBtn = document.getElementById('cancelRecurring');
+    
+    let activeSlot = null;
+    let recurringTarget = null;
+
+    function ymd(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // Helper functions for multi-booking slots
+    let bubbleHideTimeout;
+
+    function showNoteBubble(note, event) {
+      // Clear any pending hide
+      if (bubbleHideTimeout) {
+        clearTimeout(bubbleHideTimeout);
+      }
+
+      // Remove any existing bubble
+      const existing = document.querySelector('.note-bubble');
+      if (existing) {
+        existing.remove();
+      }
+
+      // Create bubble
+      const bubble = document.createElement('div');
+      bubble.className = 'note-bubble';
+      bubble.textContent = note;
+      document.body.appendChild(bubble);
+
+      // Position bubble near the pin
+      const rect = event.target.getBoundingClientRect();
+      bubble.style.left = (rect.left + rect.width / 2 - bubble.offsetWidth / 2) + 'px';
+      bubble.style.top = (rect.top - bubble.offsetHeight - 10) + 'px';
+
+      // Keep bubble open when hovering over it
+      bubble.addEventListener('mouseenter', () => {
+        if (bubbleHideTimeout) {
+          clearTimeout(bubbleHideTimeout);
+        }
+      });
+
+      bubble.addEventListener('mouseleave', () => {
+        bubble.remove();
+      });
+    }
+
+    // Local cache for Firebase data
+    let scheduleCache = {};
+    let recurringCache = [];
+
+    function load(date) {
+      return scheduleCache[date] || {};
+    }
+
+    function save(date, data) {
+      database.ref(`schedules/${date}`).set(data).catch(e => {
+        console.error('Error saving to Firebase:', e);
+      });
+    }
+
+    function loadRecurring() {
+      return recurringCache || [];
+    }
+
+    function saveRecurring(rules) {
+      database.ref('recurring').set(rules).catch(e => {
+        console.error('Error saving recurring to Firebase:', e);
+      });
+    }
+
+    // Set up real-time listeners when app loads
+    function setupFirebaseListeners() {
+      // Listen to schedule changes
+      database.ref('schedules').on('value', (snapshot) => {
+        scheduleCache = snapshot.val() || {};
+        render();
+      }, (error) => {
+        console.error('Error reading schedules:', error);
+      });
+
+      // Listen to recurring changes
+      database.ref('recurring').on('value', (snapshot) => {
+        recurringCache = snapshot.val() || [];
+        render();
+      }, (error) => {
+        console.error('Error reading recurring:', error);
+      });
+    }
+
+    function appliesOnDate(rule, dateStr) {
+      if (String(dateStr) < String(rule.start) || String(dateStr) > String(rule.end)) {
+        return false;
+      }
+      
+      const d = new Date(dateStr + 'T12:00:00');
+      const dayOfWeek = d.getDay();
+      const selectedDays = rule.days || [new Date(rule.start + 'T12:00:00').getDay()];
+      
+      if (!selectedDays.includes(dayOfWeek)) return false;
+      
+      const start = new Date(rule.start + 'T12:00:00');
+      const startWeek = Math.floor(start.getTime() / (7 * 86400000));
+      const currentWeek = Math.floor(d.getTime() / (7 * 86400000));
+      const weeks = currentWeek - startWeek;
+      
+      if (weeks < 0) return false;
+      return rule.frequency === 'biweekly' ? weeks % 2 === 0 : true;
+    }
+
+    function getRecurringRecord(date, time, court) {
+      const rules = loadRecurring();
+      for (const rule of rules) {
+        if (rule.time === time && rule.court === court && appliesOnDate(rule, date)) {
+          const result = { status: 'booked', coach: rule.coach, recurring: true, ruleId: rule.id };
+          if (rule.note) {
+            result.note = rule.note;
+          }
+          return result;
+        }
+      }
+      return null;
+    }
+
+    function render() {
+      const date = dateInput.value;
+      const data = load(date);
+      const d = new Date(date + 'T12:00:00');
+      
+      longDate.textContent = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+      }).format(d);
+
+      headerRow.innerHTML = '<th>Time</th>';
+      courts.forEach(court => {
+        const th = document.createElement('th');
+        th.textContent = `Court ${court}`;
+        headerRow.appendChild(th);
+      });
+
+      tableBody.innerHTML = '';
+      times.forEach(([key, label]) => {
+        const tr = document.createElement('tr');
+        const tdTime = document.createElement('td');
+        tdTime.className = 'time';
+        tdTime.textContent = label;
+        tr.appendChild(tdTime);
+
+        courts.forEach(court => {
+          const td = document.createElement('td');
+          const slot = document.createElement('div');
+          slot.className = 'slot';
+          slot.dataset.time = key;
+          slot.dataset.court = court;
+
+          const recurringRecord = getRecurringRecord(date, key, court);
+          const record = data[`${key}-${court}`] || recurringRecord || { status: 'open' };
+          
+          if (recurringRecord) {
+            slot.dataset.hasRecurring = 'true';
+          }
+
+          // Coach color map
+          const coachColors = {
+            'anjali': '#3D5A6D',
+            'alena': '#6D4C5C',
+            'lou': '#3D4F40',
+            'byron': '#2F1F0F',
+            'jack': '#4D5560'
+          };
+
+          if (record.status === 'cancelled') {
+            slot.classList.add('cancelled');
+            slot.textContent = 'Cancelled';
+          } else if (record.status === 'booked') {
+            slot.classList.add('booked');
+            if (record.note) {
+              slot.classList.add('has-note');
+            }
+            const coach = record.coach || 'Booked';
+            
+            // Add coach-specific color class
+            const coachClass = `coach-${coach.toLowerCase()}`;
+            slot.classList.add(coachClass);
+            
+            // Create coach text
+            const coachSpan = document.createElement('span');
+            coachSpan.textContent = coach;
+            slot.appendChild(coachSpan);
+            
+            // Add note indicator if there's a note
+            if (record.note) {
+              const noteIcon = document.createElement('span');
+              noteIcon.textContent = '📌';
+              noteIcon.style.cursor = 'pointer';
+              noteIcon.style.marginLeft = '6px';
+              noteIcon.style.fontSize = '16px';
+              noteIcon.style.verticalAlign = 'middle';
+              noteIcon.title = record.note;
+              noteIcon.addEventListener('mouseenter', (e) => {
+                showNoteBubble(record.note, e);
+              });
+
+              noteIcon.addEventListener('mouseleave', () => {
+                bubbleHideTimeout = setTimeout(() => {
+                  const bubble = document.querySelector('.note-bubble');
+                  if (bubble) {
+                    bubble.remove();
+                  }
+                }, 100);
+              });
+              slot.appendChild(noteIcon);
+            }
+          } else {
+            slot.textContent = 'Open';
+          }
+
+          slot.addEventListener('click', () => openMenu(slot));
+          td.appendChild(slot);
+          tr.appendChild(td);
+        });
+
+        tableBody.appendChild(tr);
+      });
+      
+      // Attach event listeners to menu buttons
+      setupMenuListeners();
+    }
+
+    function openMenu(slot) {
+      if (activeSlot) activeSlot.classList.remove('active');
+      activeSlot = slot;
+      slot.classList.add('active');
+
+      // Load existing note if any
+      const date = dateInput.value;
+      const data = load(date);
+      const key = `${slot.dataset.time}-${slot.dataset.court}`;
+      const existing = data[key];
+      const noteInput = document.getElementById('slotNote');
+      noteInput.value = existing && existing.note ? existing.note : '';
+
+      cancelRecurringBtn.style.display = slot.dataset.hasRecurring === 'true' ? 'block' : 'none';
+
+      const wrap = document.getElementById('scheduleWrap');
+      const rect = slot.getBoundingClientRect();
+      const wrapRect = wrap.getBoundingClientRect();
+      
+      menu.classList.add('show');
+      menu.style.top = (rect.top - wrapRect.top + 25) + 'px';
+      menu.style.left = Math.max(8, rect.left - wrapRect.left + 50) + 'px';
+    }
+
+    function closeMenu() {
+      // Since notes are auto-saved, just render to update the display
+      if (activeSlot) {
+        render();
+      }
+      
+      menu.classList.remove('show');
+      if (activeSlot) activeSlot.classList.remove('active');
+      activeSlot = null;
+    }
+
+    function updateActive(record) {
+      if (!activeSlot) return;
+      
+      const date = dateInput.value;
+      const data = load(date);
+      const k = `${activeSlot.dataset.time}-${activeSlot.dataset.court}`;
+      const noteInput = document.getElementById('slotNote');
+      
+      if (record === null) {
+        delete data[k];
+      } else {
+        data[k] = record;
+        // Add note if provided
+        if (noteInput.value.trim()) {
+          data[k].note = noteInput.value.trim();
+        }
+      }
+      
+      save(date, data);
+      closeMenu();
+      render();
+    }
+
+    function cancelRecurringSeries() {
+      console.log('cancelRecurringSeries called, activeSlot:', activeSlot);
+      
+      if (!activeSlot) {
+        console.error('No active slot');
+        alert('No slot selected');
+        return;
+      }
+      
+      const date = dateInput.value;
+      const time = activeSlot.dataset.time;
+      const court = activeSlot.dataset.court;
+      
+      console.log('Cancelling:', { date, time, court });
+      
+      const rules = loadRecurring();
+      console.log('All rules:', rules);
+      
+      const rulesToCancel = rules.filter(r => {
+        const matches = r.time === time && r.court === court && appliesOnDate(r, date);
+        console.log(`Rule ${r.id}:`, { ruleTime: r.time, ruleCourt: r.court, applies: appliesOnDate(r, date), matches });
+        return matches;
+      });
+      
+      console.log('Rules to cancel:', rulesToCancel);
+      
+      if (!rulesToCancel.length) {
+        alert('No recurring series found for this slot');
+        closeMenu();
+        return;
+      }
+
+      try {
+        console.log('Starting cancellation...');
+        
+        // Remove the rules
+        const kept = rules.filter(r => !rulesToCancel.includes(r));
+        saveRecurring(kept);
+        console.log('Saved rules, kept:', kept.length);
+
+        // Remove saved copies
+        let totalRemoved = 0;
+        rulesToCancel.forEach(rule => {
+          const startDate = new Date(rule.start + 'T12:00:00');
+          const endDate = new Date(rule.end + 'T12:00:00');
+          let current = new Date(startDate);
+          let removed = 0;
+          
+          while (current.getTime() <= endDate.getTime()) {
+            const day = ymd(current);
+            if (appliesOnDate(rule, day)) {
+              const data = load(day);
+              const key = `${rule.time}-${rule.court}`;
+              if (data[key]) {
+                console.log(`Removing ${key} from ${day}`);
+                delete data[key];
+                save(day, data);
+                removed++;
+              }
+            }
+            current.setDate(current.getDate() + 1);
+          }
+          console.log(`Removed ${removed} saved copies for rule`, rule.id);
+          totalRemoved += removed;
+        });
+
+        console.log('Cancellation complete. Total removed:', totalRemoved);
+        alert(`Recurring series cancelled!\nRemoved ${rulesToCancel.length} series and ${totalRemoved} saved copies`);
+        closeMenu();
+        render();
+      } catch (err) {
+        console.error('Error:', err);
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function openRecurringModal() {
+      // Use active slot's court and time if available
+      if (activeSlot) {
+        document.getElementById('recurringCourt').value = activeSlot.dataset.court;
+        document.getElementById('recurringTime').value = activeSlot.dataset.time;
+      } else {
+        document.getElementById('recurringCourt').value = '4';
+        document.getElementById('recurringTime').value = '09:00';
+      }
+      
+      document.getElementById('recurringCoach').value = 'Anjali';
+      document.getElementById('recurringStart').value = dateInput.value;
+      
+      const endDate = new Date(new Date().getTime() + 14 * 86400000);
+      document.getElementById('recurringEnd').value = ymd(endDate);
+      
+      document.getElementById('recurringFrequency').value = 'weekly';
+      document.getElementById('recurringNote').value = '';
+      
+      // Reset weekday checkboxes
+      document.querySelectorAll('.weekday-picker input').forEach(cb => cb.checked = false);
+      
+      recurringBackdrop.classList.add('show');
+    }
+
+    function saveRecurringBooking() {
+      const coach = document.getElementById('recurringCoach').value;
+      const court = document.getElementById('recurringCourt').value;
+      const time = document.getElementById('recurringTime').value;
+      const start = document.getElementById('recurringStart').value;
+      const end = document.getElementById('recurringEnd').value;
+      const frequency = document.getElementById('recurringFrequency').value;
+      const note = document.getElementById('recurringNote').value.trim();
+      const days = Array.from(document.querySelectorAll('.weekday-picker input:checked')).map(cb => parseInt(cb.value));
+      
+      if (!days.length) {
+        alert('Please select at least one day');
+        return;
+      }
+      
+      if (!start || !end) {
+        alert('Please select dates');
+        return;
+      }
+
+      if (start > end) {
+        alert('End date must be after start date');
+        return;
+      }
+
+      const rules = loadRecurring();
+      const newRule = {
+        id: `rec-${Date.now()}`,
+        time: time,
+        court: court,
+        coach,
+        start,
+        end,
+        frequency,
+        days
+      };
+      
+      if (note) {
+        newRule.note = note;
+      }
+      
+      rules.push(newRule);
+      
+      saveRecurring(rules);
+      recurringBackdrop.classList.remove('show');
+      render();
+      alert('Recurring booking created');
+    }
+
+    // Event Listeners
+    document.getElementById('prevDay').addEventListener('click', () => {
+      const d = new Date(dateInput.value + 'T12:00:00');
+      d.setDate(d.getDate() - 1);
+      dateInput.value = ymd(d);
+      render();
+    });
+
+    document.getElementById('nextDay').addEventListener('click', () => {
+      const d = new Date(dateInput.value + 'T12:00:00');
+      d.setDate(d.getDate() + 1);
+      dateInput.value = ymd(d);
+      render();
+    });
+
+    document.getElementById('todayBtn').addEventListener('click', () => {
+      dateInput.value = ymd(new Date());
+      render();
+    });
+
+    dateInput.addEventListener('change', render);
+
+    function setupMenuListeners() {
+      // Coach buttons
+      menu.querySelectorAll('[data-coach]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          updateActive({ status: 'booked', coach: btn.dataset.coach });
+        });
+      });
+
+      // Cancel booking
+      const cancelBtn = document.getElementById('cancelBooking');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+          updateActive({ status: 'cancelled', coach: '' });
+        });
+      }
+
+      // Reset open
+      const resetBtn = document.getElementById('resetOpen');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+          updateActive(null);
+        });
+      }
+
+      // Cancel recurring
+      const cancelRecurBtn = document.getElementById('cancelRecurring');
+      if (cancelRecurBtn) {
+        cancelRecurBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          cancelRecurringSeries();
+        });
+      }
+
+      // Clear note
+      const slotNoteInput = document.getElementById('slotNote');
+      if (slotNoteInput) {
+        slotNoteInput.addEventListener('input', () => {
+          // Auto-save note when user types or deletes
+          if (activeSlot) {
+            const date = dateInput.value;
+            const data = load(date);
+            const k = `${activeSlot.dataset.time}-${activeSlot.dataset.court}`;
+            
+            if (data[k]) {
+              if (slotNoteInput.value.trim()) {
+                // Save note if there's content
+                data[k].note = slotNoteInput.value.trim();
+              } else {
+                // Delete note if empty
+                delete data[k].note;
+              }
+              save(date, data);
+            }
+          }
+        });
+      }
+
+      // Make recurring
+      const makeRecurringBtn = document.getElementById('makeRecurringBtn');
+      if (makeRecurringBtn) {
+        makeRecurringBtn.addEventListener('click', () => {
+          closeMenu();
+          openRecurringModal();
+        });
+      }
+
+      // Close menu
+      const closeBtn = document.getElementById('closeMenu');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', closeMenu);
+      }
+    }
+
+    
+
+    document.getElementById('recurringCancel').addEventListener('click', () => {
+      recurringBackdrop.classList.remove('show');
+    });
+
+    document.getElementById('recurringSave').addEventListener('click', saveRecurringBooking);
+
+    recurringBackdrop.addEventListener('click', (e) => {
+      if (e.target === recurringBackdrop) {
+        recurringBackdrop.classList.remove('show');
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!menu.contains(e.target) && !e.target.classList.contains('slot')) {
+        closeMenu();
+    // Initialize
+    dateInput.value = ymd(new Date());
+    setupFirebaseListeners();
+    render();
+    }
+
+    // Wait for Firebase SDK to load, then initialize
+    if (typeof firebase !== 'undefined') {
+      setTimeout(() => initApp(), 500);
+    } else {
+      function waitForFirebase() {
+        if (typeof firebase !== 'undefined') {
+          setTimeout(() => initApp(), 500);
+        } else {
+          setTimeout(waitForFirebase, 100);
+        }
+      }
+      waitForFirebase();
+    }
+  </script>
+</body>
+</html>
