@@ -13,6 +13,8 @@
       --border: #cdbfae;
       --booked: #6f8065;
       --cancelled: #b85c54;
+      --open: #f7edc9;
+      --line: #d9c99c;
     }
     * { box-sizing: border-box; }
     body {
@@ -62,17 +64,169 @@
       cursor: pointer;
       padding: 0 14px;
     }
-    button:hover {
-      background: #f9f5ed;
+    button:hover { background: #f9f5ed; }
+    .date-input { width: 200px; padding: 0 16px; }
+    .long-date { font-size: 17px; font-weight: 700; }
+    .sync-status {
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    .menu button.danger {
-      background: #fee2e2 !important;
-      color: #991b1b !important;
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #b0a89d; }
+    .sync-dot.on { background: #6f8065; }
+    .sync-dot.off { background: #c9a24a; }
+    .legend {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      margin: 20px 0 18px;
+      font-size: 14px;
+      font-weight: 650;
+      flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .swatch {
+      width: 14px; height: 14px;
+      border-radius: 4px;
+      border: 1px solid #d8c992;
+    }
+    .swatch.open { background: var(--open); }
+    .swatch.cancelled { background: var(--cancelled); border-color: var(--cancelled); }
+
+    .schedule {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(75,53,40,.08);
+      overflow: auto;
+    }
+    .grid-head, .grid-body {
+      display: grid;
+      grid-template-columns: 118px repeat(3, 1fr);
+      min-width: 620px;
+    }
+    .grid-head > div {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      background: #f8f4ec;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      font-weight: 750;
+    }
+    .time-gutter {
+      position: relative;
+      border-right: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .time-label {
+      position: absolute;
+      right: 12px;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .court-col {
+      position: relative;
+      border-right: 1px solid var(--line);
+      background: var(--open);
+      cursor: pointer;
+    }
+    .court-col:last-child { border-right: 0; }
+    .gridline {
+      position: absolute;
+      left: 0; right: 0;
+      height: 0;
+      border-top: 1px solid var(--line);
+      pointer-events: none;
+    }
+    .gridline.half { border-top-style: dashed; }
+    .open-mark {
+      position: absolute;
+      left: 0; right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9c8455;
+      opacity: .8;
+      font-size: 14px;
+      font-weight: 650;
+      letter-spacing: .02em;
+      pointer-events: none;
+      user-select: none;
+    }
+    .open-mark.small { font-size: 11px; opacity: .65; }
+
+    .block {
+      position: absolute;
+      border-radius: 7px;
+      background: var(--booked);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 650;
+      cursor: pointer;
+      padding: 1px 9px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,.18);
+      user-select: none;
+      line-height: 1.15;
+    }
+    .block .range { font-weight: 600; font-size: 11px; opacity: .85; white-space: nowrap; }
+    .block.short { font-size: 10px; padding: 0 6px; gap: 4px; border-radius: 5px; }
+    .block.short .range { font-size: 9px; }
+    .block .rec { font-size: 11px; opacity: .85; }
+    .block .pin { font-size: 11px; }
+    .block.cancelled { background: var(--cancelled); }
+    .block.active { outline: 2px solid #8e6f57; outline-offset: 1px; z-index: 6; }
+    .block .resizer {
+      position: absolute;
+      left: 0; right: 0; bottom: -2px;
+      height: 10px;
+      cursor: ns-resize;
+      touch-action: none;
+    }
+    .ghost {
+      position: absolute;
+      left: 4px; right: 4px;
+      border: 2px dashed #b39a6e;
+      border-radius: 7px;
+      background: rgba(179,154,110,.12);
+      pointer-events: none;
+      z-index: 4;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #7a6538;
+      font-size: 12px;
       font-weight: 700;
     }
-    .menu button.danger:hover {
-      background: #fecaca !important;
+    .hoverhint {
+      position: absolute;
+      left: 4px; right: 4px;
+      border: 1.5px dashed #a98f5f;
+      border-radius: 7px;
+      background: rgba(255, 253, 249, .55);
+      pointer-events: none;
+      z-index: 2;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      color: #7a6538;
+      font-size: 12px;
+      font-weight: 700;
     }
+
     .note-bubble {
       position: fixed;
       background: var(--surface);
@@ -83,55 +237,157 @@
       font-size: 12px;
       z-index: 1001;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      max-width: 200px;
+      max-width: 220px;
       word-wrap: break-word;
       animation: bubbleIn 0.15s ease-out;
+      pointer-events: none;
     }
     @keyframes bubbleIn {
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
     }
+
+    .menu {
+      position: fixed;
+      z-index: 50;
+      width: 300px;
+      display: none;
+      padding: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 12px 28px rgba(75,53,40,.16);
+      max-height: 82vh;
+      overflow-y: auto;
+    }
+    .menu.show { display: block; }
+    .menu-label {
+      padding: 6px 8px 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .menu-title {
+      padding: 4px 8px 6px;
+      font-size: 14px;
+      font-weight: 750;
+    }
+    .menu button {
+      width: 100%;
+      height: 36px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      text-align: left;
+      padding: 0 9px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .menu button:hover { background: #f6f1e8; }
+    .menu button.danger {
+      background: #fee2e2 !important;
+      color: #991b1b !important;
+      font-weight: 700;
+    }
+    .menu button.danger:hover { background: #fecaca !important; }
+    .menu-sep { height: 1px; background: #eee6dc; margin: 6px 0; }
+    .menu select {
+      width: 100%;
+      padding: 8px 9px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      background: var(--surface);
+      color: var(--text);
+    }
+    .menu textarea {
+      width: 100%;
+      padding: 8px 9px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      resize: vertical;
+      min-height: 60px;
+      font-family: inherit;
+    }
+    .menu-msg {
+      display: none;
+      margin: 6px 2px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: #fee2e2;
+      color: #991b1b;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .menu-msg.show { display: block; }
+    .coaches-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 6px;
+      padding: 0 2px;
+    }
+    .coaches-grid button {
+      height: 34px;
+      text-align: center;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: #fff;
+      font-weight: 700;
+    }
+    .duration-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 6px;
+      padding: 0 2px;
+    }
+    .duration-buttons button {
+      height: 32px;
+      text-align: center;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 12px;
+    }
+    .duration-buttons button.active { background: #e8d8c4; font-weight: 750; }
+    .duration-buttons button:disabled { opacity: .45; cursor: not-allowed; }
+    .booking-summary {
+      margin: 2px 2px 6px;
+      background: #f9f5ed;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 13px;
+    }
+    .booking-summary .who { font-weight: 750; }
+    .booking-summary .when { color: var(--muted); font-size: 12px; margin-top: 3px; }
+
     .modal-backdrop {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      inset: 0;
       background: rgba(0, 0, 0, 0.3);
       z-index: 2000;
       justify-content: center;
       align-items: center;
     }
-    .modal-backdrop.show {
-      display: flex;
-    }
+    .modal-backdrop.show { display: flex; }
     .modal {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 24px;
-      max-width: 700px;
-      max-height: 80vh;
+      width: min(700px, calc(100vw - 32px));
+      max-height: 85vh;
       overflow-y: auto;
     }
-    .modal h2 {
-      margin: 0 0 20px;
-      font-size: 20px;
-    }
-    .form-row {
-      margin-bottom: 16px;
-    }
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    .form-grid-3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 16px;
-    }
+    .modal h2 { margin: 0 0 20px; font-size: 20px; }
+    .form-row { margin-bottom: 16px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
     .form-row label {
       display: block;
       margin-bottom: 6px;
@@ -146,11 +402,7 @@
       font-family: inherit;
       font-size: 13px;
     }
-    .weekday-picker {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-    }
+    .weekday-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .weekday-picker label {
       font-weight: 400;
       font-size: 12px;
@@ -158,257 +410,36 @@
       align-items: center;
       gap: 4px;
     }
-    .weekday-picker input {
-      width: auto;
-    }
-    .modal-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 20px;
-    }
-    .modal-actions button {
-      flex: 1;
-      padding: 8px;
-    }
-    .modal-actions .primary {
-      background: #38271f;
-      color: #fff;
-    }
-    .modal-actions .primary:hover {
-      background: #2d1f18;
-    }
-    .coaches-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
+    .weekday-picker input { width: auto; }
+    .modal-msg {
+      display: none;
       margin-bottom: 12px;
-    }
-    .coaches-grid button {
-      width: 100%;
-      margin: 0;
-    }
-    .duration-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-    .duration-buttons button {
-      width: 100%;
-      margin: 0;
-      padding: 8px;
-      font-size: 12px;
-      height: auto;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      cursor: pointer;
-    }
-    .duration-buttons button.active {
-      background: #e8d8c4;
-      font-weight: 700;
-    }
-    .duration-buttons button:hover {
-      background: #f9f5ed;
-    }
-    .duration-display {
-      background: #f5f1e8;
-      border: 1px solid var(--border);
+      padding: 8px 10px;
       border-radius: 6px;
-      padding: 8px 12px;
-      text-align: center;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 12px;
-    }
-    .current-bookings {
-      margin-bottom: 12px;
-    }
-    .booking-item {
-      background: #f9f5ed;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 10px;
-      margin-bottom: 8px;
-      font-size: 13px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-    }
-    .booking-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      flex: 1;
-    }
-    .booking-coach {
-      font-weight: 600;
-      color: var(--text);
-      white-space: nowrap;
-    }
-    .booking-duration {
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .booking-delete {
       background: #fee2e2;
       color: #991b1b;
-      border: 1px solid #fca5a5;
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      margin-left: auto;
-      flex-shrink: 0;
-    }
-    .booking-delete:hover {
-      background: #fecaca;
-    }
-    .date-input {
-      width: 200px;
-      padding: 0 16px;
-    }
-    .long-date {
-      font-size: 17px;
-      font-weight: 700;
-    }
-    .legend {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 22px;
-      margin: 20px 0 18px;
-      font-size: 14px;
-      font-weight: 650;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .swatch {
-      width: 14px;
-      height: 14px;
-      border-radius: 4px;
-      border: 1px solid #d8c992;
-    }
-    .swatch.open { background: #f7edc9; }
-    .swatch.booked { background: var(--booked); border-color: var(--booked); }
-    .swatch.cancelled { background: var(--cancelled); border-color: var(--cancelled); }
-    .schedule {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(75,53,40,.08);
-      overflow: auto;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-    }
-    thead th {
-      height: 48px;
-      padding: 0 12px;
-      text-align: left;
-      background: #f8f4ec;
-      color: var(--text);
-      border-bottom: 1px solid var(--border);
-      font-size: 14px;
-      font-weight: 750;
-    }
-    thead th:first-child { width: 118px; }
-    tbody td {
-      height: 64px;
-      padding: 7px;
-      border-bottom: 1px solid #ece4da;
-      vertical-align: middle;
-    }
-    tbody tr:last-child td { border-bottom: 0; }
-    .time {
-      padding-left: 12px;
-      color: var(--muted);
-      font-size: 15px;
-      font-weight: 650;
-      white-space: nowrap;
-    }
-    .slot {
-      height: 50px;
-      display: flex;
-      align-items: center;
-      padding: 0 12px;
-      border: 1px solid #ded1a5;
-      border-radius: 8px;
-      background: #f7edc9;
-      color: var(--text);
-      font-size: 15px;
-      font-weight: 650;
-      cursor: pointer;
-      user-select: none;
-      transition: background 0.12s, border-color 0.12s;
-      position: relative;
-    }
-    .slot:hover { background: #f3e5b2; border-color: #cdbb7e; }
-    .slot.booked {
-      background: var(--booked);
-      border-color: var(--booked);
-      color: #fff;
-    }
-    .slot.cancelled {
-      background: var(--cancelled);
-      border-color: var(--cancelled);
-      color: #fff;
-    }
-    .slot.coach-anjali { background: #3D5A6D !important; color: #fff; }
-    .slot.coach-alena { background: #6D4C5C !important; color: #fff; }
-    .slot.coach-lou { background: #3D4F40 !important; color: #fff; }
-    .slot.coach-byron { background: #2F1F0F !important; color: #fff; }
-    .slot.coach-jack { background: #3A3F47 !important; color: #fff; }
-    .slot.active { outline: 2px solid #8e6f57; outline-offset: 2px; }
-    .menu {
-      position: fixed;
-      z-index: 50;
-      width: 300px;
-      display: none;
-      padding: 8px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      box-shadow: 0 12px 28px rgba(75,53,40,.16);
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-    .menu.show { display: block; }
-    .menu-label {
-      padding: 6px 8px 8px;
-      color: var(--muted);
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 650;
     }
-    .menu button {
-      width: 100%;
-      height: 36px;
-      border: 0;
-      border-radius: 6px;
-      background: transparent;
-      text-align: left;
-      padding: 0 9px;
-      font-size: 14px;
-      font-weight: 600;
+    .modal-msg.show { display: block; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+    .modal-actions button { flex: 1; padding: 8px; }
+    .modal-actions .primary { background: #38271f; color: #fff; }
+    .modal-actions .primary:hover { background: #2d1f18; }
+
+    @media (max-width: 720px) {
+      .page { padding: 24px 12px 40px; }
+      h1 { font-size: 28px; }
     }
-    .menu button:hover { background: #f6f1e8; }
-    .menu .danger { color: #9f463f; }
-    .menu-sep { height: 1px; background: #eee6dc; margin: 5px 0; }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div class="page">
     <div>
       <h1>LAGCC Court Schedule</h1>
-      <p class="subtitle">Courts 4, 5 & 6 — click a slot to book or cancel</p>
+      <p class="subtitle">Courts 4, 5 &amp; 6 — click an <b>Open</b> hour to book it; hold and drag for a shorter lesson</p>
     </div>
 
     <div class="toolbar">
@@ -419,57 +450,70 @@
         <button id="todayBtn">Today</button>
       </div>
       <div class="long-date" id="longDate"></div>
+      <div class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
     </div>
 
-    <div class="legend">
-      <div class="legend-item"><span class="swatch open"></span>Open</div>
+    <div class="legend" id="legend">
+      <div class="legend-item"><span class="swatch open"></span>Open — click to book the hour</div>
       <div class="legend-item"><span class="swatch cancelled"></span>Cancelled</div>
+      <div class="legend-item">↕ Hold + drag for 15 / 30 / 45 min lessons</div>
     </div>
 
-    <div class="schedule" id="scheduleWrap">
-      <table>
-        <thead><tr id="headerRow"></tr></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-      <div class="menu" id="menu">
-        <div class="menu-label">Current Bookings:</div>
-        <div id="currentBookings" class="current-bookings"></div>
-        <div class="menu-sep"></div>
-        <div class="menu-label">Add New Booking:</div>
-        <div class="menu-label">Duration:</div>
-        <div class="duration-buttons">
-          <button data-duration="30">30 min</button>
-          <button data-duration="45">45 min</button>
-          <button data-duration="60" class="active">60 min</button>
-        </div>
-        <div class="duration-display" id="durationDisplay">Selected: 60 min</div>
-        <div class="menu-sep"></div>
-        <div class="menu-label">Assign coach:</div>
-        <div class="coaches-grid">
-          <button data-coach="Anjali">Anjali</button>
-          <button data-coach="Alena">Alena</button>
-          <button data-coach="Lou">Lou</button>
-          <button data-coach="Byron">Byron</button>
-          <button data-coach="Jack">Jack</button>
-        </div>
-        <div class="menu-sep"></div>
-        <button id="cancelBooking" class="danger">Cancel booking</button>
-        <button id="resetOpen">Clear / reset to open</button>
-        <button id="cancelRecurring" class="danger" style="display:none;">Cancel recurring series</button>
-        <div class="menu-sep"></div>
-        <button id="makeRecurringBtn">↻ Make recurring...</button>
-        <div class="menu-sep"></div>
-        <div class="menu-label">Optional note:</div>
-        <textarea id="slotNote" placeholder="e.g., Clinic, Private lesson, Special instructions..." style="width: 100%; padding: 8px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; resize: vertical; min-height: 70px; font-family: inherit;"></textarea>
-        <div class="menu-sep"></div>
-        <button id="closeMenu">Close</button>
+    <div class="schedule">
+      <div class="grid-head">
+        <div>Time</div>
+        <div>Court 4</div>
+        <div>Court 5</div>
+        <div>Court 6</div>
       </div>
+      <div class="grid-body" id="gridBody"></div>
     </div>
+  </div>
+
+  <div class="menu" id="menu">
+    <div class="menu-title" id="menuTitle"></div>
+    <div class="booking-summary" id="bookingSummary" style="display:none;"></div>
+    <div class="menu-msg" id="menuMsg"></div>
+
+    <div id="newSection">
+      <div class="menu-label">Start time:</div>
+      <div style="padding: 0 2px 6px;"><select id="startSelect"></select></div>
+      <div class="menu-label" id="durationLabel">Duration:</div>
+      <div class="duration-buttons" id="durationButtons">
+        <button data-duration="15">15 min</button>
+        <button data-duration="30">30 min</button>
+        <button data-duration="45">45 min</button>
+        <button data-duration="60" class="active">60 min</button>
+      </div>
+      <button id="makeRecurringBtn">↻ Make recurring...</button>
+      <div class="menu-sep"></div>
+      <div class="menu-label">Book with coach:</div>
+      <div class="coaches-grid" id="coachGrid"></div>
+    </div>
+
+    <div id="noteSection">
+      <div class="menu-sep"></div>
+      <div class="menu-label">Optional note:</div>
+      <div style="padding: 0 2px;"><textarea id="slotNote" placeholder="e.g., Clinic, Private lesson, Special instructions..."></textarea></div>
+    </div>
+
+    <div id="editSection">
+      <div class="menu-sep"></div>
+      <button id="makeRecurringEditBtn">↻ Make recurring...</button>
+      <button id="deleteBooking" class="danger">Cancel booking</button>
+      <button id="skipOccurrence" class="danger">Skip just this date</button>
+      <button id="cancelSeries" class="danger">Cancel entire series…</button>
+      <button id="restoreBtn">Restore this slot</button>
+    </div>
+
+    <div class="menu-sep"></div>
+    <button id="closeMenu">Close</button>
   </div>
 
   <div class="modal-backdrop" id="recurringBackdrop">
     <div class="modal">
       <h2>New Recurring Booking</h2>
+      <div class="modal-msg" id="recurringMsg"></div>
       <div class="form-grid-3">
         <div class="form-row">
           <label>Court</label>
@@ -477,28 +521,29 @@
         </div>
         <div class="form-row">
           <label>Time</label>
-          <select id="recurringTime">
-            <option value="06:00">6:00 AM</option><option value="07:00">7:00 AM</option><option value="08:00">8:00 AM</option><option value="09:00">9:00 AM</option><option value="10:00">10:00 AM</option>
-            <option value="11:00">11:00 AM</option><option value="12:00">12:00 PM</option><option value="13:00">1:00 PM</option><option value="14:00">2:00 PM</option><option value="15:00">3:00 PM</option>
-            <option value="16:00">4:00 PM</option><option value="17:00">5:00 PM</option><option value="18:00">6:00 PM</option><option value="19:00">7:00 PM</option><option value="20:00">8:00 PM</option>
-          </select>
+          <select id="recurringTime"></select>
         </div>
         <div class="form-row">
-          <label>Coach</label>
-          <select id="recurringCoach"><option value="Anjali">Anjali</option><option value="Alena">Alena</option><option value="Lou">Lou</option><option value="Byron">Byron</option><option value="Jack">Jack</option></select>
+          <label>Duration</label>
+          <select id="recurringDuration">
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60" selected>60 min</option>
+          </select>
         </div>
       </div>
       <div class="form-grid">
-        <div class="form-row">
-          <label>Duration</label>
-          <select id="recurringDuration"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option></select>
-        </div>
+        <div class="form-row"><label>Coach</label><select id="recurringCoach"></select></div>
+        <div class="form-row"><label>Frequency</label><select id="recurringFrequency"><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option></select></div>
+      </div>
+      <div class="form-grid">
         <div class="form-row"><label>Start Date</label><input type="date" id="recurringStart"></div>
         <div class="form-row"><label>End Date</label><input type="date" id="recurringEnd"></div>
       </div>
       <div class="form-row">
         <label>Days of Week</label>
-        <div class="weekday-picker">
+        <div class="weekday-picker" id="weekdayPicker">
           <label><input type="checkbox" value="0"> Sun</label>
           <label><input type="checkbox" value="1"> Mon</label>
           <label><input type="checkbox" value="2"> Tue</label>
@@ -508,890 +553,938 @@
           <label><input type="checkbox" value="6"> Sat</label>
         </div>
       </div>
-      <div class="form-row">
-        <label>Frequency</label>
-        <select id="recurringFrequency"><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option></select>
-      </div>
-      <div class="form-row"><label>Optional Note</label><textarea id="recurringNote" placeholder="e.g., Clinic, Private lesson, Special instructions..." style="resize: vertical; min-height: 100px; padding: 8px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit;"></textarea></div>
+      <div class="form-row"><label>Optional Note</label><textarea id="recurringNote" placeholder="e.g., Clinic, Private lesson, Special instructions..." style="resize: vertical; min-height: 80px;"></textarea></div>
       <div class="modal-actions"><button id="recurringCancel">Cancel</button><button class="primary" id="recurringSave">Save</button></div>
     </div>
   </div>
 
   <script>
-    const times = [
-      ['06:00','6:00 AM'], ['07:00','7:00 AM'], ['08:00','8:00 AM'], ['09:00','9:00 AM'], ['10:00','10:00 AM'],
-      ['11:00','11:00 AM'], ['12:00','12:00 PM'], ['13:00','1:00 PM'], ['14:00','2:00 PM'], ['15:00','3:00 PM'],
-      ['16:00','4:00 PM'], ['17:00','5:00 PM'], ['18:00','6:00 PM'], ['19:00','7:00 PM'], ['20:00','8:00 PM']
-    ];
-    const courts = ['4', '5', '6'];
-    
-    const dateInput = document.getElementById('dateInput');
-    const longDate = document.getElementById('longDate');
-    const headerRow = document.getElementById('headerRow');
-    const tableBody = document.getElementById('tableBody');
-    const menu = document.getElementById('menu');
-    const cancelRecurringBtn = document.getElementById('cancelRecurring');
-    
-    let activeSlot = null;
-    let selectedDuration = 60; // Default to 60 min
+    // ---------- Config ----------
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyD4aAi44uc0WFlP6LTf8NTtIcDh7vJJWkI",
+      authDomain: "lagcc-court-schedule.firebaseapp.com",
+      projectId: "lagcc-court-schedule",
+      storageBucket: "lagcc-court-schedule.firebasestorage.app",
+      messagingSenderId: "813946500866",
+      appId: "1:813946500866:web:c23512a4932263eec6b41b"
+    };
+    const SCHEDULES = "lagcc_schedules";
+    const RECURRING = "lagcc_recurring";
 
+    const DAY_START = 6 * 60;    // 6:00 AM
+    const DAY_END = 21 * 60;     // 9:00 PM
+    const PX_PER_HOUR = 64;
+    const SNAP = 15;             // minutes
+    const COURTS = ["4", "5", "6"];
+    const COACHES = { Anjali: "#3D5A6D", Alena: "#6D4C5C", Lou: "#3D4F40", Byron: "#2F1F0F", Jack: "#3A3F47" };
+    const DURATIONS = [30, 45, 60];
+
+    // ---------- State ----------
+    let db = null;
+    let cloudOk = false;
+    let daySub = null;             // unsubscribe fn for current date's doc listener
+    let dayCache = {};             // date -> normalized day
+    let recurringRules = [];
+    let activeCtx = null;          // {mode:'new'|'edit', court, start, duration, bookingId?, booking?}
+    let seriesConfirmTimer = null;
+    let dragState = null;          // drag-to-create: {col, ghost, hint, court, anchor, start, duration, dragging}
+    let resizeState = null;        // drag-to-extend: {col, court, block, el, rangeEl, occupied, newDur}
+    let suppressClicksUntil = 0;   // swallow the click event that follows a drag release
+
+    const dateInput = document.getElementById("dateInput");
+    const longDate = document.getElementById("longDate");
+    const gridBody = document.getElementById("gridBody");
+    const menu = document.getElementById("menu");
+    const menuMsg = document.getElementById("menuMsg");
+
+    // ---------- Time helpers ----------
     function ymd(d) {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+    function parseHM(s) {
+      const [h, m] = s.split(":").map(Number);
+      return h * 60 + m;
+    }
+    function fmtMin(min) {
+      let h = Math.floor(min / 60), m = min % 60;
+      const ap = h >= 12 ? "PM" : "AM";
+      h = h % 12 || 12;
+      return `${h}:${String(m).padStart(2, "0")} ${ap}`;
+    }
+    function fmtRange(start, duration) {
+      return `${fmtMin(start)}–${fmtMin(start + duration)}`;
+    }
+    function toHM(min) {
+      return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+    }
+    function newId(prefix) {
+      return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     }
 
-    function load(date) {
-      try { 
-        const data = localStorage.getItem(`lagcc:${date}`);
-        return data ? JSON.parse(data) : {};
-      }
-      catch (e) { 
-        console.error('Error loading date:', e);
-        return {}; 
-      }
-    }
-
-    function save(date, data) {
+    // ---------- Storage (localStorage mirror / fallback) ----------
+    function loadLocalDay(date) {
       try {
-        localStorage.setItem(`lagcc:${date}`, JSON.stringify(data));
-      } catch (e) {
-        console.error('Error saving date:', e);
-      }
+        const v2 = localStorage.getItem(`lagcc:v2:${date}`);
+        if (v2) return normalizeDay(JSON.parse(v2));
+        const v1 = localStorage.getItem(`lagcc:${date}`);
+        if (v1) {
+          const day = migrateV1Day(JSON.parse(v1));
+          localStorage.setItem(`lagcc:v2:${date}`, JSON.stringify(day));
+          return day;
+        }
+      } catch (e) { console.error("loadLocalDay", e); }
+      return normalizeDay(null);
+    }
+    function saveLocalDay(date, day) {
+      try { localStorage.setItem(`lagcc:v2:${date}`, JSON.stringify(day)); }
+      catch (e) { console.error("saveLocalDay", e); }
+    }
+    function loadLocalRecurring() {
+      try {
+        const v2 = localStorage.getItem("lagcc:v2:recurring");
+        if (v2) { const r = JSON.parse(v2); return Array.isArray(r) ? r : []; }
+        const v1 = localStorage.getItem("lagcc:recurring");
+        if (v1) {
+          const rules = (JSON.parse(v1) || []).map(r => ({ duration: 60, ...r }));
+          localStorage.setItem("lagcc:v2:recurring", JSON.stringify(rules));
+          return rules;
+        }
+      } catch (e) { console.error("loadLocalRecurring", e); }
+      return [];
+    }
+    function saveLocalRecurring(rules) {
+      try { localStorage.setItem("lagcc:v2:recurring", JSON.stringify(rules)); }
+      catch (e) { console.error("saveLocalRecurring", e); }
     }
 
-    function loadRecurring() {
-      try { 
-        const data = localStorage.getItem('lagcc:recurring');
-        let rules = data ? JSON.parse(data) : [];
-        
-        if (!Array.isArray(rules)) {
-          rules = [];
+    // Old format: { "HH:MM-court": {status,coach,note,duration?} | [bookings] }
+    // Stacked array bookings become sequential sub-hour bookings from the top of the hour.
+    function migrateV1Day(old) {
+      const day = normalizeDay(null);
+      if (!old || typeof old !== "object") return day;
+      for (const key of Object.keys(old)) {
+        const m = key.match(/^(\d{2}:\d{2})-(\d)$/);
+        if (!m || !COURTS.includes(m[2])) continue;
+        const hourStart = parseHM(m[1]);
+        const val = old[key];
+        const entries = Array.isArray(val) ? val : [val];
+        let offset = 0;
+        for (const e of entries) {
+          if (!e || typeof e !== "object") continue;
+          const b = {
+            start: hourStart + offset,
+            duration: Math.min(e.duration || 60, 60),
+            coach: e.coach || "",
+            status: e.status === "cancelled" ? "cancelled" : "booked"
+          };
+          if (e.note) b.note = e.note;
+          day.courts[m[2]][newId("b")] = b;
+          offset += b.duration;
         }
-        
-        // Deduplicate: remove exact duplicates based on time, court, coach, duration
-        const seen = new Set();
-        const deduplicated = [];
-        for (const rule of rules) {
-          const key = `${rule.time}-${rule.court}-${rule.coach}-${rule.duration}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            deduplicated.push(rule);
+      }
+      return day;
+    }
+
+    function normalizeDay(raw) {
+      const day = { courts: {} };
+      for (const c of COURTS) {
+        day.courts[c] = {};
+        const src = raw && raw.courts && raw.courts[c];
+        if (src && typeof src === "object") {
+          for (const id of Object.keys(src)) {
+            const b = src[id];
+            if (b && typeof b.start === "number" && typeof b.duration === "number") day.courts[c][id] = b;
           }
         }
-        
-        // Save deduplicated rules back if there were duplicates
-        if (deduplicated.length < rules.length) {
-          localStorage.setItem('lagcc:recurring', JSON.stringify(deduplicated));
-        }
-        
-        return deduplicated;
       }
-      catch (e) { 
-        console.error('Error loading recurring:', e);
-        return []; 
-      }
+      return day;
     }
 
-    function saveRecurring(rules) {
-      try {
-        localStorage.setItem('lagcc:recurring', JSON.stringify(Array.isArray(rules) ? rules : []));
-      } catch (e) {
-        console.error('Error saving recurring:', e);
+    // ---------- Data access ----------
+    function getDay(date) {
+      if (!(date in dayCache)) dayCache[date] = loadLocalDay(date);
+      return dayCache[date];
+    }
+    function saveDay(date, day) {
+      dayCache[date] = day;
+      saveLocalDay(date, day);
+      if (db) {
+        db.collection(SCHEDULES).doc(date).set(day).catch(e => {
+          console.error("cloud save failed", e);
+          setCloud(false);
+        });
       }
+      render();
+    }
+    function saveRule(rule) {
+      recurringRules = recurringRules.filter(r => r.id !== rule.id).concat([rule]);
+      saveLocalRecurring(recurringRules);
+      if (db) db.collection(RECURRING).doc(rule.id).set(rule).catch(e => { console.error(e); setCloud(false); });
+      render();
+    }
+    function deleteRule(id) {
+      recurringRules = recurringRules.filter(r => r.id !== id);
+      saveLocalRecurring(recurringRules);
+      if (db) db.collection(RECURRING).doc(id).delete().catch(e => { console.error(e); setCloud(false); });
+      render();
     }
 
+    // ---------- Recurring ----------
+    function sundayOfWeek(dateStr) {
+      const d = new Date(dateStr + "T12:00:00");
+      d.setDate(d.getDate() - d.getDay());
+      return d.getTime();
+    }
     function appliesOnDate(rule, dateStr) {
-      // String comparison for dates (YYYY-MM-DD format)
       if (!rule.start || !rule.end) return false;
-      if (String(dateStr) < String(rule.start) || String(dateStr) > String(rule.end)) {
-        return false;
+      if (dateStr < rule.start || dateStr > rule.end) return false;
+      const d = new Date(dateStr + "T12:00:00");
+      const days = (rule.days && rule.days.length) ? rule.days : [new Date(rule.start + "T12:00:00").getDay()];
+      if (!days.includes(d.getDay())) return false;
+      if (rule.frequency === "biweekly") {
+        const weeks = Math.round((sundayOfWeek(dateStr) - sundayOfWeek(rule.start)) / (7 * 86400000));
+        return weeks % 2 === 0;
       }
-      
-      const d = new Date(dateStr + 'T12:00:00');
-      const dayOfWeek = d.getDay();
-      const selectedDays = rule.days || [new Date(rule.start + 'T12:00:00').getDay()];
-      
-      if (!selectedDays.includes(dayOfWeek)) return false;
-      
-      const start = new Date(rule.start + 'T12:00:00');
-      const startWeek = Math.floor(start.getTime() / (7 * 86400000));
-      const currentWeek = Math.floor(d.getTime() / (7 * 86400000));
-      const weeks = currentWeek - startWeek;
-      
-      if (weeks < 0) return false;
-      
-      return rule.frequency === 'biweekly' ? weeks % 2 === 0 : true;
+      return true;
     }
 
-    function getRecurringRecords(date, time, court) {
-      const rules = loadRecurring();
-      const data = load(date);
-      const k = `${time}-${court}`;
-      
-      // Check if there are any cancellation entries for this date
-      const dailyData = data[k];
-      const cancelledRuleIds = new Set();
-      
-      if (dailyData) {
-        const bookingList = Array.isArray(dailyData) ? dailyData : [dailyData];
-        bookingList.forEach(booking => {
-          if (booking.status === 'cancelled' && booking.recurringRuleId) {
-            cancelledRuleIds.add(booking.recurringRuleId);
-          }
+    // All blocks to draw for a court on a date: stored bookings + live recurring occurrences.
+    // A stored entry with status "skip" suppresses its rule's occurrence and renders as red "Cancelled".
+    function blocksFor(date, court) {
+      const day = getDay(date);
+      const stored = day.courts[court];
+      const blocks = [];
+      const skippedRules = new Set();
+      for (const id of Object.keys(stored)) {
+        const b = stored[id];
+        if (b.status === "skip" && b.ruleId) skippedRules.add(b.ruleId);
+        blocks.push({ ...b, id, virtual: false });
+      }
+      for (const rule of recurringRules) {
+        if (rule.court !== court || !appliesOnDate(rule, date)) continue;
+        if (skippedRules.has(rule.id)) continue;
+        blocks.push({
+          start: parseHM(rule.time),
+          duration: rule.duration || 60,
+          coach: rule.coach,
+          note: rule.note || "",
+          status: "booked",
+          ruleId: rule.id,
+          virtual: true,
+          id: "virt-" + rule.id
         });
       }
-      
-      const records = [];
-      for (const rule of rules) {
-        if (rule.time === time && rule.court === court && appliesOnDate(rule, date)) {
-          // Skip if this occurrence is cancelled
-          if (!cancelledRuleIds.has(rule.id)) {
-            records.push({ status: 'booked', coach: rule.coach, duration: rule.duration || 60, recurring: true, ruleId: rule.id, note: rule.note });
-          }
-        }
-      }
-      return records;
+      return blocks;
     }
-
-    function cancelRecurringSeries() {
-      if (!activeSlot) return;
-      
-      const date = dateInput.value;
-      const time = activeSlot.dataset.time;
-      const court = activeSlot.dataset.court;
-      
-      const rules = loadRecurring();
-      const rulesToCancel = rules.filter(r => 
-        r.time === time && r.court === court && appliesOnDate(r, date)
+    // Occupied intervals (things a new booking may not overlap). Skips/cancellations free the court.
+    function occupiedFor(date, court, excludeId) {
+      return blocksFor(date, court).filter(b =>
+        b.status === "booked" && b.id !== excludeId
       );
-      
-      if (!rulesToCancel.length) {
-        alert('No recurring series found for this slot');
-        closeMenu();
-        return;
-      }
-      
-      if (!confirm(`Cancel recurring series for Court ${court}?\n\nThis removes all future occurrences.`)) {
-        closeMenu();
-        return;
-      }
+    }
+    function overlaps(start, duration, list) {
+      return list.some(b => start < b.start + b.duration && b.start < start + duration);
+    }
 
-      try {
-        // Remove the rules
-        const kept = rules.filter(r => !rulesToCancel.includes(r));
-        saveRecurring(kept);
-
-        // Remove saved one-off copies for these rules
-        rulesToCancel.forEach(rule => {
-          const startDate = new Date(rule.start + 'T12:00:00');
-          const endDate = new Date(rule.end + 'T12:00:00');
-          const maxIterations = 365; // Prevent infinite loops (1 year max)
-          let iterations = 0;
-          
-          let current = new Date(startDate);
-          
-          while (current.getTime() <= endDate.getTime() && iterations < maxIterations) {
-            const day = ymd(current);
-            if (appliesOnDate(rule, day)) {
-              const data = load(day);
-              const key = `${rule.time}-${rule.court}`;
-              if (data[key]) {
-                delete data[key];
-                save(day, data);
-              }
-            }
-            current.setDate(current.getDate() + 1);
-            iterations++;
-          }
-        });
-
-        alert('Recurring series cancelled');
-        closeMenu();
-        render();
-      } catch (err) {
-        alert('Error cancelling: ' + err.message);
-        closeMenu();
+    // ---------- Lane layout (overlapping blocks render side by side, never hidden) ----------
+    function layoutLanes(blocks) {
+      const sorted = [...blocks].sort((a, b) => a.start - b.start || b.duration - a.duration);
+      const lanes = [];   // lane -> end time of last block in lane
+      let cluster = [];   // blocks in current overlap cluster
+      let clusterEnd = -1;
+      const finish = () => {
+        const n = Math.max(1, ...cluster.map(b => b._lane + 1));
+        cluster.forEach(b => { b._lanes = n; });
+        cluster = [];
+        lanes.length = 0;
+      };
+      for (const b of sorted) {
+        if (cluster.length && b.start >= clusterEnd) finish();
+        let lane = lanes.findIndex(end => end <= b.start);
+        if (lane === -1) { lane = lanes.length; lanes.push(0); }
+        lanes[lane] = b.start + b.duration;
+        b._lane = lane;
+        cluster.push(b);
+        clusterEnd = Math.max(clusterEnd, b.start + b.duration);
       }
+      if (cluster.length) finish();
+      return sorted;
+    }
+
+    // ---------- Rendering ----------
+    const TOP_PAD = 14;   // breathing room so the 6 AM label centers on its line
+    function yPos(min) { return (min - DAY_START) / 60 * PX_PER_HOUR + TOP_PAD; }
+    function minAtY(col, clientY) {
+      const rect = col.getBoundingClientRect();
+      const m = DAY_START + Math.floor((clientY - rect.top - TOP_PAD) / PX_PER_HOUR * 60 / SNAP) * SNAP;
+      return Math.max(DAY_START, Math.min(m, DAY_END - SNAP));
+    }
+    // What a plain click books: the whole hour when it's free, otherwise the free
+    // gap around the click inside that hour (e.g. 4:00-4:30 when 4:30-5 is taken).
+    function clickSpan(court, min) {
+      const occupied = occupiedFor(dateInput.value, court);
+      if (overlaps(min, 1, occupied)) return { start: min, duration: 60 }; // openNewMenu nudges to the next free slot
+      const h = Math.floor(min / 60) * 60;
+      let gapStart = h, gapEnd = Math.min(h + 60, DAY_END);
+      for (const b of occupied) {
+        const end = b.start + b.duration;
+        if (end <= min && end > gapStart) gapStart = end;
+        if (b.start > min && b.start < gapEnd) gapEnd = b.start;
+      }
+      return { start: gapStart, duration: gapEnd - gapStart };
     }
 
     function render() {
       const date = dateInput.value;
-      const data = load(date);
-      const d = new Date(date + 'T12:00:00');
-      
-      longDate.textContent = new Intl.DateTimeFormat('en-US', {
-        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+      const d = new Date(date + "T12:00:00");
+      longDate.textContent = new Intl.DateTimeFormat("en-US", {
+        weekday: "long", month: "long", day: "numeric", year: "numeric"
       }).format(d);
 
-      headerRow.innerHTML = '<th>Time</th>';
-      courts.forEach(court => {
-        const th = document.createElement('th');
-        th.textContent = `Court ${court}`;
-        headerRow.appendChild(th);
-      });
+      gridBody.innerHTML = "";
 
-      tableBody.innerHTML = '';
-      times.forEach(([key, label]) => {
-        const tr = document.createElement('tr');
-        const tdTime = document.createElement('td');
-        tdTime.className = 'time';
-        tdTime.textContent = label;
-        tr.appendChild(tdTime);
-
-        courts.forEach(court => {
-          const td = document.createElement('td');
-          const slot = document.createElement('div');
-          slot.className = 'slot';
-          slot.dataset.time = key;
-          slot.dataset.court = court;
-
-          const recurringRecords = getRecurringRecords(date, key, court);
-          const slotDataRaw = data[`${key}-${court}`];
-
-          // Only entries with status 'booked' count as active bookings —
-          // arrays may also contain cancellation stubs (status: 'cancelled',
-          // recurringRuleId) with no coach/duration of their own.
-          const activeDaily = Array.isArray(slotDataRaw)
-            ? slotDataRaw.filter(b => b.status === 'booked')
-            : (slotDataRaw && slotDataRaw.status === 'booked' ? [slotDataRaw] : []);
-          const wholeSlotCancelled = slotDataRaw && !Array.isArray(slotDataRaw) && slotDataRaw.status === 'cancelled';
-
-          let record;
-          if (wholeSlotCancelled) {
-            record = { status: 'cancelled' };
-          } else if (activeDaily.length > 0 || recurringRecords.length > 0) {
-            record = { status: 'booked' };
-          } else {
-            record = { status: 'open' };
-          }
-
-          if (recurringRecords.length > 0) {
-            slot.dataset.hasRecurring = 'true';
-          }
-
-          if (record.status === 'cancelled') {
-            slot.classList.add('cancelled');
-            slot.textContent = 'Cancelled';
-          } else if (record.status === 'booked') {
-            // Support both single booking and array of bookings
-            let bookings = activeDaily.concat(recurringRecords);
-            
-            const totalDuration = bookings.reduce((sum, b) => sum + (b.duration || 60), 0);
-            
-            if (totalDuration <= 60 && bookings.length > 0) {
-              // Show vertical fills for multiple bookings
-              slot.style.background = '#f7edc9';
-              slot.style.display = 'flex';
-              slot.style.flexDirection = 'column';
-              slot.style.padding = '0';
-              slot.style.alignItems = 'stretch';
-              slot.style.justifyContent = 'flex-start';
-              slot.style.overflow = 'hidden';
-              
-              bookings.forEach(booking => {
-                const duration = booking.duration || 60;
-                const fillPercent = (duration / 60) * 100;
-                
-                const fill = document.createElement('div');
-                fill.style.width = '100%';
-                fill.style.height = fillPercent + '%';
-                fill.style.display = 'flex';
-                fill.style.alignItems = 'center';
-                fill.style.justifyContent = 'center';
-                fill.style.color = '#fff';
-                fill.style.fontWeight = '600';
-                fill.style.fontSize = '13px';
-                fill.style.flexShrink = '0';
-                fill.style.pointerEvents = 'none';
-                fill.textContent = booking.coach;
-                
-                // Apply coach color to fill
-                if (booking.coach.toLowerCase() === 'anjali') fill.style.background = '#3D5A6D';
-                else if (booking.coach.toLowerCase() === 'alena') fill.style.background = '#6D4C5C';
-                else if (booking.coach.toLowerCase() === 'lou') fill.style.background = '#3D4F40';
-                else if (booking.coach.toLowerCase() === 'byron') fill.style.background = '#2F1F0F';
-                else if (booking.coach.toLowerCase() === 'jack') fill.style.background = '#3A3F47';
-                
-                if (booking.note) {
-                  const pinSpan = document.createElement('span');
-                  pinSpan.innerHTML = ' 📌';
-                  pinSpan.style.cursor = 'pointer';
-                  pinSpan.style.marginLeft = '4px';
-                  pinSpan.style.color = '#fff';
-                  pinSpan.style.pointerEvents = 'auto';
-                  pinSpan.addEventListener('mouseover', (e) => showNoteBubble(booking.note, e));
-                  pinSpan.addEventListener('mouseout', () => {
-                    const bubble = document.getElementById('noteBubble');
-                    if (bubble) bubble.remove();
-                  });
-                  fill.appendChild(pinSpan);
-                }
-                
-                slot.appendChild(fill);
-              });
-            } else {
-              // Full 60 min booking - display normally (first booking only)
-              slot.classList.add(`coach-${bookings[0].coach.toLowerCase()}`);
-              slot.textContent = bookings[0].coach || 'Booked';
-              if (bookings[0].note) {
-                const pinSpan = document.createElement('span');
-                pinSpan.innerHTML = ' 📌';
-                pinSpan.style.cursor = 'pointer';
-                pinSpan.style.marginLeft = '7px';
-                pinSpan.addEventListener('mouseover', (e) => showNoteBubble(bookings[0].note, e));
-                pinSpan.addEventListener('mouseout', () => {
-                  const bubble = document.getElementById('noteBubble');
-                  if (bubble) bubble.remove();
-                });
-                slot.appendChild(pinSpan);
-              }
-            }
-          } else {
-            slot.textContent = 'Open';
-          }
-
-          slot.addEventListener('click', (e) => openMenu(slot));
-          td.appendChild(slot);
-          tr.appendChild(td);
-        });
-
-        tableBody.appendChild(tr);
-      });
-    }
-
-    function renderCurrentBookings(slotData) {
-      const container = document.getElementById('currentBookings');
-      container.innerHTML = '';
-      
-      if (!slotData || (!slotData.daily && (!slotData.recurring || slotData.recurring.length === 0))) {
-        container.innerHTML = '<div style="font-size: 12px; color: var(--muted); font-style: italic;">No bookings yet</div>';
-        return;
+      const gutter = document.createElement("div");
+      gutter.className = "time-gutter";
+      gutter.style.height = (yPos(DAY_END) + TOP_PAD) + "px";
+      for (let min = DAY_START; min <= DAY_END; min += 60) {
+        const label = document.createElement("div");
+        label.className = "time-label";
+        label.style.top = yPos(min) + "px";
+        label.textContent = fmtMin(min);
+        gutter.appendChild(label);
       }
-      
-      // Process daily bookings
-      if (slotData.daily) {
-        const dailyBookings = Array.isArray(slotData.daily) ? slotData.daily : [slotData.daily];
-        
-        dailyBookings.forEach((booking, index) => {
-          if (booking.status !== 'booked') return;
-          
-          const item = document.createElement('div');
-          item.className = 'booking-item';
-          
-          const info = document.createElement('div');
-          info.className = 'booking-info';
-          
-          const coach = document.createElement('div');
-          coach.className = 'booking-coach';
-          coach.textContent = booking.coach + ' - ' + (booking.duration || 60) + ' min';
-          info.appendChild(coach);
-          
-          if (booking.note) {
-            const note = document.createElement('div');
-            note.className = 'booking-duration';
-            note.textContent = '📌 ' + booking.note;
-            info.appendChild(note);
-          }
-          
-          item.appendChild(info);
-          
-          const deleteBtn = document.createElement('button');
-          deleteBtn.className = 'booking-delete';
-          deleteBtn.textContent = 'Cancel';
-          deleteBtn.addEventListener('click', () => {
-            deleteBooking(index);
-          });
-          
-          item.appendChild(deleteBtn);
-          container.appendChild(item);
-        });
-      }
-      
-      // Process recurring bookings (array)
-      if (slotData.recurring && Array.isArray(slotData.recurring) && slotData.recurring.length > 0) {
-        slotData.recurring.forEach((booking, recIndex) => {
-          const item = document.createElement('div');
-          item.className = 'booking-item';
-          item.style.opacity = '0.8';
-          item.style.borderStyle = 'dashed';
-          
-          const info = document.createElement('div');
-          info.className = 'booking-info';
-          
-          const coach = document.createElement('div');
-          coach.className = 'booking-coach';
-          coach.textContent = '📅 ' + booking.coach + ' - ' + (booking.duration || 60) + ' min';
-          info.appendChild(coach);
-          
-          const recurring = document.createElement('div');
-          recurring.className = 'booking-duration';
-          recurring.textContent = 'Recurring';
-          info.appendChild(recurring);
-          
-          item.appendChild(info);
-          
-          // Add cancel button for recurring bookings
-          const deleteBtn = document.createElement('button');
-          deleteBtn.className = 'booking-delete';
-          deleteBtn.textContent = 'Cancel';
-          
-          // Capture booking data in closure
-          (function(bookingData) {
-            deleteBtn.addEventListener('click', function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              
-              // Simple 3-step confirmation
-              const del1 = confirm('Delete ' + bookingData.coach + ' - TODAY ONLY?');
-              if (del1) {
-                // Option 1: Delete today only
-                const dt = dateInput.value;
-                const rules = loadRecurring();
-                const idx = rules.findIndex(r => r.id === bookingData.ruleId);
-                if (idx !== -1) {
-                  const d = load(dt);
-                  const k = rules[idx].time + '-' + rules[idx].court;
-                  if (!d[k]) d[k] = [];
-                  d[k].push({status:'cancelled', recurringRuleId: bookingData.ruleId});
-                  save(dt, d);
-                  render();
-                  openMenu(activeSlot);
-                }
-                return;
-              }
-              
-              const del2 = confirm('Delete ' + bookingData.coach + ' - TODAY and ALL FUTURE dates?');
-              if (del2) {
-                // Option 2: Delete today forward
-                const dt = dateInput.value;
-                const rules = loadRecurring();
-                const idx = rules.findIndex(r => r.id === bookingData.ruleId);
-                if (idx !== -1) {
-                  const ed = new Date(dt);
-                  ed.setDate(ed.getDate() - 1);
-                  const edStr = ed.getFullYear() + '-' + String(ed.getMonth()+1).padStart(2,'0') + '-' + String(ed.getDate()).padStart(2,'0');
-                  rules[idx].end = edStr;
-                  saveRecurring(rules);
-                  render();
-                  openMenu(activeSlot);
-                }
-                return;
-              }
-              
-              const del3 = confirm('Delete ' + bookingData.coach + ' - ENTIRE RECURRING SERIES?\n\nThis cannot be undone.');
-              if (del3) {
-                // Option 3: Delete entire series
-                const rules = loadRecurring();
-                const idx = rules.findIndex(r => r.id === bookingData.ruleId);
-                if (idx !== -1) {
-                  rules.splice(idx, 1);
-                  saveRecurring(rules);
-                  render();
-                  openMenu(activeSlot);
-                }
-              }
-            });
-          })(booking);
-          
-          item.appendChild(deleteBtn);
-          container.appendChild(item);
-        });
-      }
-    }
-    
-    function deleteBooking(index) {
-      if (!activeSlot) return;
-      
-      const date = dateInput.value;
-      const data = load(date);
-      const k = `${activeSlot.dataset.time}-${activeSlot.dataset.court}`;
-      
-      if (data[k]) {
-        if (Array.isArray(data[k])) {
-          data[k].splice(index, 1);
-          if (data[k].length === 0) {
-            delete data[k];
-          } else if (data[k].length === 1) {
-            // Convert back to single booking
-            data[k] = data[k][0];
-          }
-        } else {
-          delete data[k];
+      gridBody.appendChild(gutter);
+
+      for (const court of COURTS) {
+        const col = document.createElement("div");
+        col.className = "court-col";
+        col.dataset.court = court;
+        col.style.height = (yPos(DAY_END) + TOP_PAD) + "px";
+
+        for (let m = DAY_START; m <= DAY_END; m += 30) {
+          const line = document.createElement("div");
+          line.className = "gridline" + (m % 60 ? " half" : "");
+          line.style.top = yPos(m) + "px";
+          col.appendChild(line);
         }
-        
-        save(date, data);
-        render();
-        openMenu(activeSlot);
+
+        const dayBlocks = layoutLanes(blocksFor(date, court));
+        const covered = (a, b2) => dayBlocks.some(b => a < b.start + b.duration && b.start < b2);
+        for (let h = DAY_START; h < DAY_END; h += 60) {
+          const halves = [[h, h + 30], [h + 30, h + 60]].map(([a, b2]) => !covered(a, b2));
+          const spans = (halves[0] && halves[1]) ? [[h, 60, ""]]
+            : halves.map((free, i) => free ? [h + i * 30, 30, " small"] : null).filter(Boolean);
+          for (const [m, len, cls] of spans) {
+            const om = document.createElement("div");
+            om.className = "open-mark" + cls;
+            om.style.top = yPos(m) + "px";
+            om.style.height = (len / 60 * PX_PER_HOUR) + "px";
+            om.dataset.start = m;
+            om.dataset.len = len;
+            om.textContent = "Open";
+            col.appendChild(om);
+          }
+        }
+
+        const hint = document.createElement("div");
+        hint.className = "hoverhint";
+        col.appendChild(hint);
+
+        for (const b of dayBlocks) {
+          col.appendChild(makeBlock(b, court));
+        }
+
+        const ghost = document.createElement("div");
+        ghost.className = "ghost";
+        ghost.dataset.court = court;
+        col.appendChild(ghost);
+
+        col.addEventListener("click", e => {
+          e.stopPropagation();
+          if (Date.now() < suppressClicksUntil) return;
+          const span = clickSpan(court, minAtY(col, e.clientY));
+          openNewMenu(court, span.start, e, span.duration);
+        });
+        col.addEventListener("pointerdown", e => {
+          if (e.pointerType !== "mouse" || e.button !== 0) return;
+          if (e.target.closest(".block")) return;
+          const anchor = Math.min(minAtY(col, e.clientY), DAY_END - SNAP);
+          dragState = { col, ghost, hint, court, anchor, anchorY: e.clientY, start: anchor, duration: 15, dragging: false };
+        });
+        col.addEventListener("mousemove", e => {
+          if (dragState || resizeState || menu.classList.contains("show")) { hint.style.display = "none"; return; }
+          if (e.target.closest(".block")) {
+            hint.style.display = "none";
+            setOpenMarksVisibility(col, null);
+            return;
+          }
+          const span = clickSpan(court, minAtY(col, e.clientY));
+          hint.style.top = (yPos(span.start) + 2) + "px";
+          hint.style.height = (span.duration / 60 * PX_PER_HOUR - 4) + "px";
+          hint.textContent = "Book " + fmtRange(span.start, span.duration);
+          hint.style.display = "flex";
+          setOpenMarksVisibility(col, span.start, span.duration);
+        });
+        col.addEventListener("mouseleave", () => {
+          hint.style.display = "none";
+          if (!dragState && !(activeCtx && activeCtx.mode === "new" && activeCtx.court === court)) {
+            setOpenMarksVisibility(col, null);
+          }
+        });
+
+        gridBody.appendChild(col);
       }
+      updateGhost();
     }
 
-    function showNoteBubble(note, event) {
-      let bubble = document.getElementById('noteBubble');
-      if (bubble) bubble.remove();
-      bubble = document.createElement('div');
-      bubble.id = 'noteBubble';
-      bubble.className = 'note-bubble';
+    function makeBlock(b, court) {
+      const el = document.createElement("div");
+      el.className = "block";
+      const isCancelled = b.status === "cancelled" || b.status === "skip";
+      if (isCancelled) el.classList.add("cancelled");
+      else if (COACHES[b.coach]) el.style.background = COACHES[b.coach];
+      if (b.duration < 30) el.classList.add("short");
+
+      const laneW = 100 / (b._lanes || 1);
+      el.style.left = `calc(${b._lane * laneW}% + 4px)`;
+      el.style.width = `calc(${laneW}% - 8px)`;
+      el.style.top = (yPos(b.start) + 2) + "px";
+      el.style.height = (b.duration / 60 * PX_PER_HOUR - 4) + "px";
+
+      const name = document.createElement("span");
+      name.textContent = isCancelled ? "Cancelled" : b.coach;
+      el.appendChild(name);
+      const range = document.createElement("span");
+      range.className = "range";
+      range.textContent = fmtRange(b.start, b.duration);
+      el.appendChild(range);
+      if (b.virtual || (b.ruleId && b.status === "skip")) {
+        const rec = document.createElement("span");
+        rec.className = "rec";
+        rec.textContent = "↻";
+        el.appendChild(rec);
+      }
+      if (b.note && !isCancelled) {
+        const pin = document.createElement("span");
+        pin.className = "pin";
+        pin.textContent = "📌";
+        el.appendChild(pin);
+        el.addEventListener("mouseenter", e => showNoteBubble(b.note, el));
+        el.addEventListener("mouseleave", hideNoteBubble);
+      }
+      if (activeCtx && activeCtx.mode === "edit" && activeCtx.bookingId === b.id && activeCtx.court === court) {
+        el.classList.add("active");
+      }
+      if (!isCancelled) {
+        const rz = document.createElement("div");
+        rz.className = "resizer";
+        if (b.duration < 30) rz.style.height = "4px";
+        rz.addEventListener("pointerdown", e => {
+          e.stopPropagation();
+          e.preventDefault();
+          resizeState = {
+            col: el.parentElement, court, block: b, el, rangeEl: range,
+            occupied: occupiedFor(dateInput.value, court, b.id), newDur: 0
+          };
+        });
+        el.appendChild(rz);
+      }
+      el.addEventListener("click", e => {
+        e.stopPropagation();
+        if (Date.now() < suppressClicksUntil) return;
+        openEditMenu(court, b, el);
+      });
+      return el;
+    }
+
+    function showNoteBubble(note, anchor) {
+      hideNoteBubble();
+      const bubble = document.createElement("div");
+      bubble.id = "noteBubble";
+      bubble.className = "note-bubble";
       bubble.textContent = note;
       document.body.appendChild(bubble);
-      
-      const rect = event.target.getBoundingClientRect();
-      const bubbleWidth = bubble.offsetWidth;
-      bubble.style.left = (rect.left + rect.width / 2 - bubbleWidth / 2) + 'px';
-      bubble.style.top = (rect.top - bubble.offsetHeight - 10) + 'px';
-      
-      const hideTimeout = setTimeout(() => bubble.remove(), 3000);
-      bubble.addEventListener('mouseleave', () => { clearTimeout(hideTimeout); bubble.remove(); });
+      const rect = anchor.getBoundingClientRect();
+      bubble.style.left = Math.max(8, rect.left + rect.width / 2 - bubble.offsetWidth / 2) + "px";
+      bubble.style.top = Math.max(8, rect.top - bubble.offsetHeight - 8) + "px";
+    }
+    function hideNoteBubble() {
+      const bubble = document.getElementById("noteBubble");
+      if (bubble) bubble.remove();
     }
 
-    function openMenu(slot) {
-      if (activeSlot) activeSlot.classList.remove('active');
-      activeSlot = slot;
-      slot.classList.add('active');
+    // Hide "Open" labels beneath a hover/ghost overlay (start=null restores all)
+    function setOpenMarksVisibility(col, start, duration) {
+      col.querySelectorAll(".open-mark").forEach(m => {
+        const s = +m.dataset.start, l = +m.dataset.len;
+        m.style.visibility = (start != null && s < start + duration && start < s + l) ? "hidden" : "";
+      });
+    }
 
-      const date = dateInput.value;
-      const data = load(date);
-      const k = `${slot.dataset.time}-${slot.dataset.court}`;
-      const noteInput = document.getElementById('slotNote');
-      
-      // Calculate available time including all recurring bookings
-      let usedDuration = 0;
-      const recurringRecords = getRecurringRecords(date, slot.dataset.time, slot.dataset.court);
-      
-      if (data[k]) {
-        if (Array.isArray(data[k])) {
-          // Multiple bookings — ignore cancellation stubs, which have no duration of their own
-          usedDuration = data[k]
-            .filter(b => b.status === 'booked')
-            .reduce((sum, b) => sum + (b.duration || 60), 0);
-        } else if (data[k].status === 'booked') {
-          // Single booking
-          usedDuration = data[k].duration || 60;
-        }
-      }
-      
-      // Add all recurring booking durations
-      if (recurringRecords.length > 0) {
-        usedDuration += recurringRecords.reduce((sum, r) => sum + (r.duration || 60), 0);
-      }
-      
-      const availableTime = 60 - usedDuration;
-      
-      if (data[k]) {
-        if (Array.isArray(data[k])) {
-          const activeBookings = data[k].filter(b => b.status === 'booked');
-          const last = activeBookings[activeBookings.length - 1];
-          noteInput.value = last ? (last.note || '') : '';
-          selectedDuration = last ? (last.duration || 60) : 60;
+    // ---------- Ghost preview for a new booking ----------
+    function updateGhost() {
+      document.querySelectorAll(".ghost").forEach(g => {
+        if (activeCtx && activeCtx.mode === "new" && g.dataset.court === activeCtx.court) {
+          g.style.top = (yPos(activeCtx.start) + 2) + "px";
+          g.style.height = (activeCtx.duration / 60 * PX_PER_HOUR - 4) + "px";
+          g.textContent = fmtRange(activeCtx.start, activeCtx.duration);
+          g.style.display = "flex";
+          setOpenMarksVisibility(g.parentElement, activeCtx.start, activeCtx.duration);
         } else {
-          noteInput.value = data[k].note || '';
-          selectedDuration = data[k].duration || 60;
-        }
-      } else {
-        noteInput.value = '';
-        selectedDuration = 60;
-      }
-      
-      // Update duration button display and availability
-      document.querySelectorAll('[data-duration]').forEach(btn => {
-        btn.classList.remove('active');
-        const duration = parseInt(btn.dataset.duration);
-        if (duration === selectedDuration) {
-          btn.classList.add('active');
-        }
-        // Disable if duration exceeds available time
-        if (duration > availableTime) {
-          btn.disabled = true;
-          btn.style.opacity = '0.5';
-          btn.style.cursor = 'not-allowed';
-        } else {
-          btn.disabled = false;
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
+          if (g.style.display !== "none") setOpenMarksVisibility(g.parentElement, null);
+          g.style.display = "none";
         }
       });
-      
-      // Update duration display
-      if (availableTime === 0) {
-        document.getElementById('durationDisplay').textContent = 'Slot full (60 min)';
-      } else if (availableTime < 60) {
-        document.getElementById('durationDisplay').textContent = 'Selected: ' + selectedDuration + ' min (Available: ' + availableTime + ' min)';
-      } else {
-        document.getElementById('durationDisplay').textContent = 'Selected: ' + selectedDuration + ' min';
+    }
+
+    // ---------- Menu ----------
+    function showMsg(text) {
+      menuMsg.textContent = text;
+      menuMsg.classList.add("show");
+    }
+    function clearMsg() { menuMsg.classList.remove("show"); }
+
+    function positionMenu(x, y) {
+      menu.classList.add("show");
+      const mw = menu.offsetWidth, mh = menu.offsetHeight;
+      let left = x + 14, top = y;
+      if (left + mw > window.innerWidth - 8) left = x - mw - 14;
+      if (left < 8) left = 8;
+      if (top + mh > window.innerHeight - 8) top = window.innerHeight - mh - 8;
+      if (top < 8) top = 8;
+      menu.style.left = left + "px";
+      menu.style.top = top + "px";
+    }
+
+    function setMenuMode(mode, opts = {}) {
+      document.getElementById("newSection").style.display = mode === "new" ? "block" : "none";
+      document.getElementById("editSection").style.display = mode === "edit" ? "block" : "none";
+      document.getElementById("bookingSummary").style.display = mode === "edit" ? "block" : "none";
+      document.getElementById("deleteBooking").style.display = opts.canDelete ? "block" : "none";
+      document.getElementById("skipOccurrence").style.display = opts.canSkip ? "block" : "none";
+      document.getElementById("cancelSeries").style.display = opts.canCancelSeries ? "block" : "none";
+      document.getElementById("restoreBtn").style.display = opts.canRestore ? "block" : "none";
+      document.getElementById("noteSection").style.display = opts.hideNote ? "none" : "block";
+      document.getElementById("makeRecurringEditBtn").style.display = opts.canMakeRecurring ? "block" : "none";
+      resetSeriesConfirm();
+      clearMsg();
+    }
+
+    function openNewMenu(court, startMin, clickEvent, duration = 60) {
+      commitNote();
+      activeCtx = { mode: "new", court, start: startMin, duration };
+      const occupied = occupiedFor(dateInput.value, court);
+      if (overlaps(startMin, 1, occupied)) {
+        // clicked the sliver of grid behind a lane-split block: nudge to next free snap
+        while (startMin < DAY_END - SNAP && overlaps(startMin, 1, occupied)) startMin += SNAP;
+        activeCtx.start = startMin;
       }
-      
-      // Display current bookings (including all recurring)
-      const allBookings = {
-        daily: data[k],
-        recurring: recurringRecords
+      document.getElementById("menuTitle").textContent = `Court ${court} — new booking`;
+      buildStartSelect(court);
+      document.getElementById("slotNote").value = "";
+      setMenuMode("new", {});
+      syncDurationButtons();
+      render();
+      positionMenu(clickEvent.clientX, clickEvent.clientY);
+    }
+
+    function openEditMenu(court, block, anchorEl) {
+      commitNote();
+      activeCtx = {
+        mode: "edit", court,
+        start: block.start, duration: block.duration,
+        bookingId: block.id, booking: block
       };
-      renderCurrentBookings(allBookings);
+      const isSkip = block.status === "skip";
+      const isCancelledOneOff = block.status === "cancelled";
+      const title = isSkip || isCancelledOneOff ? "Cancelled slot" : `Court ${court} — booking`;
+      document.getElementById("menuTitle").textContent = title;
 
-      // Individual cancel buttons are now on each recurring booking - hide the old button
-      cancelRecurringBtn.style.display = 'none';
+      const summary = document.getElementById("bookingSummary");
+      summary.innerHTML = "";
+      const who = document.createElement("div");
+      who.className = "who";
+      who.textContent = isSkip || isCancelledOneOff
+        ? "Cancelled" + (block.coach ? ` (was ${block.coach})` : "")
+        : block.coach + (block.virtual ? " · recurring ↻" : "");
+      const when = document.createElement("div");
+      when.className = "when";
+      when.textContent = `Court ${court} · ${fmtRange(block.start, block.duration)}`;
+      summary.appendChild(who);
+      summary.appendChild(when);
 
-      const rect = slot.getBoundingClientRect();
-      const menuWidth = 300;
-      const menuHeight = 400;
-      
-      // Ensure menu is visible and positioned
-      menu.classList.add('show');
-      
-      // Check if there's space on the right
-      if (rect.right + menuWidth + 15 < window.innerWidth) {
-        // Position to the right
-        menu.style.left = (rect.right + 15) + 'px';
-      } else {
-        // Position to the left
-        menu.style.left = (rect.left - menuWidth - 15) + 'px';
-      }
-      
-      // Position menu below or above slot depending on available space
-      const spaceBelow = window.innerHeight - rect.bottom;
-      
-      if (spaceBelow > menuHeight) {
-        // Enough space below, position below the slot
-        menu.style.top = rect.bottom + 'px';
-      } else {
-        // Position above the slot
-        menu.style.top = (rect.top - menuHeight - 10) + 'px';
-      }
+      document.getElementById("slotNote").value = block.note || "";
+
+      setMenuMode("edit", {
+        canDelete: !block.virtual && !isSkip && !isCancelledOneOff,
+        canSkip: block.virtual,
+        canCancelSeries: !!block.ruleId,
+        canRestore: isSkip || isCancelledOneOff,
+        hideNote: isSkip || isCancelledOneOff,
+        canMakeRecurring: !block.virtual && !isSkip && !isCancelledOneOff
+      });
+      render();
+      const rect = anchorEl.getBoundingClientRect();
+      positionMenu(rect.right, rect.top);
     }
 
     function closeMenu() {
-      // Save or delete note when closing menu
-      if (activeSlot) {
-        const date = dateInput.value;
-        const data = load(date);
-        const k = `${activeSlot.dataset.time}-${activeSlot.dataset.court}`;
-        const noteInput = document.getElementById('slotNote');
-        const noteValue = noteInput.value.trim();
-        
-        if (data[k]) {
-          if (Array.isArray(data[k])) {
-            // Multiple bookings
-            const lastBooking = data[k][data[k].length - 1];
-            if (noteValue) {
-              lastBooking.note = noteValue;
-            } else {
-              delete lastBooking.note;
-            }
-          } else {
-            // Single booking
-            if (noteValue) {
-              data[k].note = noteValue;
-            } else {
-              delete data[k].note;
-            }
-          }
-          save(date, data);
-        }
-      }
-      
-      menu.classList.remove('show');
-      if (activeSlot) activeSlot.classList.remove('active');
-      activeSlot = null;
+      commitNote();
+      activeCtx = null;
+      menu.classList.remove("show");
       render();
     }
 
-    function updateActive(record) {
-      if (!activeSlot) {
-        console.warn('No active slot');
+    // Persist the note textarea into the open booking/rule when the menu closes.
+    function commitNote() {
+      if (!activeCtx || activeCtx.mode !== "edit") return;
+      const b = activeCtx.booking;
+      if (!b || b.status === "skip" || b.status === "cancelled") return;
+      const val = document.getElementById("slotNote").value.trim();
+      if ((b.note || "") === val) return;
+      if (b.virtual) {
+        const rule = recurringRules.find(r => r.id === b.ruleId);
+        if (rule) saveRule({ ...rule, note: val });
+      } else {
+        const date = dateInput.value;
+        const day = getDay(date);
+        const stored = day.courts[activeCtx.court][activeCtx.bookingId];
+        if (stored) {
+          if (val) stored.note = val; else delete stored.note;
+          saveDay(date, day);
+        }
+      }
+    }
+
+    function buildStartSelect(court) {
+      const sel = document.getElementById("startSelect");
+      sel.innerHTML = "";
+      for (let min = DAY_START; min <= DAY_END - 30; min += SNAP) {
+        const opt = document.createElement("option");
+        opt.value = min;
+        opt.textContent = fmtMin(min);
+        sel.appendChild(opt);
+      }
+      sel.value = activeCtx.start;
+    }
+
+    function syncDurationButtons() {
+      if (!activeCtx || activeCtx.mode !== "new") return;
+      const occupied = occupiedFor(dateInput.value, activeCtx.court);
+      let maxFree = 0;
+      if (!overlaps(activeCtx.start, 1, occupied)) {
+        const next = Math.min(DAY_END, ...occupied.filter(b => b.start > activeCtx.start).map(b => b.start));
+        maxFree = next - activeCtx.start;
+      }
+      if (maxFree >= 15 && activeCtx.duration > maxFree) {
+        activeCtx.duration = Math.floor(maxFree / SNAP) * SNAP;
+      }
+      document.querySelectorAll("#durationButtons button").forEach(btn => {
+        const dur = parseInt(btn.dataset.duration);
+        btn.disabled = dur > maxFree;
+        btn.classList.toggle("active", dur === activeCtx.duration);
+      });
+      document.getElementById("durationLabel").textContent = "Duration: " + activeCtx.duration + " min";
+      if (maxFree < 15) showMsg("No room at this time — pick a different start time.");
+      else clearMsg();
+      updateGhost();
+    }
+
+    function addBooking(coach) {
+      if (!activeCtx || activeCtx.mode !== "new") return;
+      const { court, start, duration } = activeCtx;
+      const date = dateInput.value;
+      if (start + duration > DAY_END) { showMsg("Runs past 9:00 PM."); return; }
+      if (overlaps(start, duration, occupiedFor(date, court))) {
+        showMsg("Overlaps an existing booking.");
         return;
       }
-      
+      const day = getDay(date);
+      const b = { start, duration, coach, status: "booked" };
+      const note = document.getElementById("slotNote").value.trim();
+      if (note) b.note = note;
+      day.courts[court][newId("b")] = b;
+      activeCtx = null;
+      menu.classList.remove("show");
+      saveDay(date, day);
+    }
+
+    function deleteActiveBooking() {
+      if (!activeCtx || !activeCtx.bookingId) return;
+      const date = dateInput.value;
+      const day = getDay(date);
+      delete day.courts[activeCtx.court][activeCtx.bookingId];
+      activeCtx = null;
+      menu.classList.remove("show");
+      saveDay(date, day);
+    }
+
+    function skipOccurrence() {
+      if (!activeCtx || !activeCtx.booking || !activeCtx.booking.virtual) return;
+      const b = activeCtx.booking;
+      const date = dateInput.value;
+      const day = getDay(date);
+      day.courts[activeCtx.court][newId("s")] = {
+        start: b.start, duration: b.duration, coach: b.coach,
+        status: "skip", ruleId: b.ruleId
+      };
+      activeCtx = null;
+      menu.classList.remove("show");
+      saveDay(date, day);
+    }
+
+    function resetSeriesConfirm() {
+      const btn = document.getElementById("cancelSeries");
+      btn.textContent = "Cancel entire series…";
+      btn.dataset.armed = "";
+      if (seriesConfirmTimer) { clearTimeout(seriesConfirmTimer); seriesConfirmTimer = null; }
+    }
+    function cancelSeries() {
+      const btn = document.getElementById("cancelSeries");
+      if (btn.dataset.armed !== "1") {
+        btn.dataset.armed = "1";
+        btn.textContent = "Really cancel ALL future dates?";
+        seriesConfirmTimer = setTimeout(resetSeriesConfirm, 4000);
+        return;
+      }
+      const ruleId = activeCtx && activeCtx.booking && activeCtx.booking.ruleId;
+      activeCtx = null;
+      menu.classList.remove("show");
+      if (ruleId) deleteRule(ruleId);
+    }
+
+    function restoreSlot() {
+      // Removes a skip entry (recurring resumes) or a cancelled one-off marker.
+      deleteActiveBooking();
+    }
+
+    // ---------- Recurring modal ----------
+    function openRecurringModal() {
+      const timeSel = document.getElementById("recurringTime");
+      timeSel.innerHTML = "";
+      for (let min = DAY_START; min <= DAY_END - 30; min += 30) {
+        const opt = document.createElement("option");
+        opt.value = toHM(min);
+        opt.textContent = fmtMin(min);
+        timeSel.appendChild(opt);
+      }
+      const coachSel = document.getElementById("recurringCoach");
+      coachSel.innerHTML = "";
+      for (const c of Object.keys(COACHES)) {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        coachSel.appendChild(opt);
+      }
+      if (activeCtx) {
+        document.getElementById("recurringCourt").value = activeCtx.court;
+        const snapped = Math.floor(activeCtx.start / 30) * 30;
+        timeSel.value = toHM(snapped);
+        document.getElementById("recurringDuration").value = String(activeCtx.duration || 60);
+        if (activeCtx.booking && activeCtx.booking.coach) coachSel.value = activeCtx.booking.coach;
+        const dow = new Date(dateInput.value + "T12:00:00").getDay();
+        document.querySelectorAll("#weekdayPicker input").forEach(i => { i.checked = parseInt(i.value) === dow; });
+      }
+      document.getElementById("recurringStart").value = dateInput.value;
+      document.getElementById("recurringMsg").classList.remove("show");
+      document.getElementById("recurringBackdrop").classList.add("show");
+    }
+
+    function saveRecurring() {
+      const msg = document.getElementById("recurringMsg");
+      const start = document.getElementById("recurringStart").value;
+      const end = document.getElementById("recurringEnd").value;
+      if (!start || !end || end < start) {
+        msg.textContent = "Pick a start and end date (end must not be before start).";
+        msg.classList.add("show");
+        return;
+      }
+      const days = Array.from(document.querySelectorAll("#weekdayPicker input:checked")).map(i => parseInt(i.value));
+      const rule = {
+        id: newId("r"),
+        court: document.getElementById("recurringCourt").value,
+        time: document.getElementById("recurringTime").value,
+        duration: parseInt(document.getElementById("recurringDuration").value),
+        coach: document.getElementById("recurringCoach").value,
+        start, end,
+        frequency: document.getElementById("recurringFrequency").value,
+        days: days.length ? days : [new Date(start + "T12:00:00").getDay()],
+        note: document.getElementById("recurringNote").value.trim()
+      };
+      document.getElementById("recurringBackdrop").classList.remove("show");
+      document.getElementById("recurringNote").value = "";
+      if (activeCtx) { activeCtx = null; menu.classList.remove("show"); }
+      saveRule(rule);
+    }
+
+    // ---------- Firebase (Firestore, with localStorage fallback) ----------
+    function setCloud(ok) {
+      cloudOk = ok;
+      const dot = document.getElementById("syncDot");
+      const text = document.getElementById("syncText");
+      dot.className = "sync-dot " + (ok ? "on" : "off");
+      text.textContent = ok ? "Synced — everyone sees this schedule" : "Local only — changes stay on this device";
+    }
+
+    function subscribeDay(date) {
+      if (daySub) { daySub(); daySub = null; }
+      if (!db) return;
+      daySub = db.collection(SCHEDULES).doc(date).onSnapshot(snap => {
+        setCloud(true);
+        dayCache[date] = normalizeDay(snap.data());
+        saveLocalDay(date, dayCache[date]);
+        if (dateInput.value === date) render();
+      }, err => {
+        console.error("day listener", err);
+        setCloud(false);
+      });
+    }
+
+    function initFirebase() {
       try {
-        const date = dateInput.value;
-        const data = load(date);
-        const k = `${activeSlot.dataset.time}-${activeSlot.dataset.court}`;
-        const noteInput = document.getElementById('slotNote');
-        
-        if (record === null) {
-          delete data[k];
-        } else {
-          // Create new booking object
-          const newBooking = {
-            status: record.status,
-            coach: record.coach,
-            duration: selectedDuration
-          };
-          if (noteInput.value.trim()) {
-            newBooking.note = noteInput.value.trim();
-          }
-          
-          // "Cancel booking" marks the whole slot cancelled, overriding any
-          // existing bookings — it isn't another entry in the bookings array.
-          if (record.status === 'cancelled') {
-            data[k] = newBooking;
-            save(date, data);
-            closeMenu();
-            return;
-          }
-
-          // Check if slot already has bookings (single object OR array — arrays
-          // don't have a .status, so that alone would miss a 3rd+ booking)
-          const hasExisting = data[k] && (Array.isArray(data[k]) ? data[k].length > 0 : data[k].status === 'booked');
-          if (hasExisting) {
-            const existingBookings = Array.isArray(data[k]) ? data[k] : [data[k]];
-            const activeExisting = existingBookings.filter(b => b.status === 'booked');
-
-            // Add all recurring booking durations to total
-            const recurringRecords = getRecurringRecords(date, activeSlot.dataset.time, activeSlot.dataset.court);
-            const recurringDuration = recurringRecords.reduce((sum, r) => sum + (r.duration || 60), 0);
-            const totalDuration = activeExisting.reduce((sum, b) => sum + (b.duration || 60), 0) + recurringDuration + selectedDuration;
-            
-            if (totalDuration > 60) {
-              alert('Not enough time! Slot would exceed 60 minutes.');
-              return;
-            }
-            
-            // Add to array
-            data[k] = existingBookings;
-            data[k].push(newBooking);
-          } else {
-            // Check all recurring when adding new booking
-            const recurringRecords = getRecurringRecords(date, activeSlot.dataset.time, activeSlot.dataset.court);
-            const recurringDuration = recurringRecords.reduce((sum, r) => sum + (r.duration || 60), 0);
-            
-            if (recurringDuration + selectedDuration > 60) {
-              alert('Not enough time! Slot would exceed 60 minutes.');
-              return;
-            }
-            
-            // New booking
-            data[k] = newBooking;
-          }
-        }
-        
-        save(date, data);
-        closeMenu();
-      } catch (err) {
-        console.error('Error updating slot:', err);
-        alert('Error updating slot: ' + err.message);
+        if (typeof firebase === "undefined") { setCloud(false); return; }
+        firebase.initializeApp(FIREBASE_CONFIG);
+        db = firebase.firestore();
+        db.collection(RECURRING).onSnapshot(qs => {
+          setCloud(true);
+          recurringRules = qs.docs.filter(d => !d.id.startsWith("_")).map(d => d.data());
+          saveLocalRecurring(recurringRules);
+          render();
+        }, err => {
+          console.error("recurring listener", err);
+          setCloud(false);
+        });
+        subscribeDay(dateInput.value);
+      } catch (e) {
+        console.error("firebase init", e);
+        setCloud(false);
       }
     }
 
-    // Event listeners
-    document.getElementById('prevDay').addEventListener('click', () => {
-      const d = new Date(dateInput.value + 'T12:00:00');
+    // ---------- Wiring ----------
+    function setDate(dateStr) {
+      dateInput.value = dateStr;
+      if (activeCtx) { activeCtx = null; menu.classList.remove("show"); }
+      subscribeDay(dateStr);
+      render();
+    }
+
+    document.getElementById("prevDay").addEventListener("click", () => {
+      const d = new Date(dateInput.value + "T12:00:00");
       d.setDate(d.getDate() - 1);
-      dateInput.value = ymd(d);
-      render();
+      setDate(ymd(d));
     });
-
-    document.getElementById('nextDay').addEventListener('click', () => {
-      const d = new Date(dateInput.value + 'T12:00:00');
+    document.getElementById("nextDay").addEventListener("click", () => {
+      const d = new Date(dateInput.value + "T12:00:00");
       d.setDate(d.getDate() + 1);
-      dateInput.value = ymd(d);
-      render();
+      setDate(ymd(d));
     });
+    document.getElementById("todayBtn").addEventListener("click", () => setDate(ymd(new Date())));
+    dateInput.addEventListener("change", () => setDate(dateInput.value));
 
-    document.getElementById('todayBtn').addEventListener('click', () => {
-      dateInput.value = ymd(new Date());
-      render();
+    const coachGrid = document.getElementById("coachGrid");
+    for (const c of Object.keys(COACHES)) {
+      const btn = document.createElement("button");
+      btn.textContent = c;
+      btn.style.background = COACHES[c];
+      btn.addEventListener("click", () => addBooking(c));
+      coachGrid.appendChild(btn);
+    }
+
+    document.getElementById("startSelect").addEventListener("change", e => {
+      if (activeCtx && activeCtx.mode === "new") {
+        activeCtx.start = parseInt(e.target.value);
+        syncDurationButtons();
+      }
     });
-
-    dateInput.addEventListener('change', render);
-
-    menu.querySelectorAll('[data-coach]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        updateActive({ status: 'booked', coach: btn.dataset.coach });
+    document.querySelectorAll("#durationButtons button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (!activeCtx || activeCtx.mode !== "new" || btn.disabled) return;
+        activeCtx.duration = parseInt(btn.dataset.duration);
+        syncDurationButtons();
       });
     });
 
-    document.getElementById('cancelBooking').addEventListener('click', () => {
-      updateActive({ status: 'cancelled', coach: '' });
+    document.getElementById("deleteBooking").addEventListener("click", deleteActiveBooking);
+    document.getElementById("skipOccurrence").addEventListener("click", skipOccurrence);
+    document.getElementById("cancelSeries").addEventListener("click", cancelSeries);
+    document.getElementById("restoreBtn").addEventListener("click", restoreSlot);
+    document.getElementById("closeMenu").addEventListener("click", closeMenu);
+    document.getElementById("makeRecurringBtn").addEventListener("click", openRecurringModal);
+    document.getElementById("makeRecurringEditBtn").addEventListener("click", openRecurringModal);
+    document.getElementById("recurringCancel").addEventListener("click", () => {
+      document.getElementById("recurringBackdrop").classList.remove("show");
+    });
+    document.getElementById("recurringSave").addEventListener("click", saveRecurring);
+
+    document.addEventListener("click", e => {
+      if (Date.now() < suppressClicksUntil) return;
+      if (menu.classList.contains("show") && !menu.contains(e.target)) closeMenu();
     });
 
-    document.getElementById('resetOpen').addEventListener('click', () => {
-      updateActive(null);
+    // Drag-to-create (empty grid) and drag-to-extend (booking bottom edge)
+    document.addEventListener("pointermove", e => {
+      if (dragState) {
+        if (!dragState.dragging && Math.abs(e.clientY - dragState.anchorY) < 8) return;
+        dragState.dragging = true;
+        const cur = minAtY(dragState.col, e.clientY);
+        const s = Math.min(dragState.anchor, cur);
+        const en = Math.min(DAY_END, Math.max(dragState.anchor, cur) + SNAP);
+        dragState.start = s;
+        dragState.duration = Math.max(15, en - s);
+        dragState.hint.style.display = "none";
+        const g = dragState.ghost;
+        g.style.top = (yPos(s) + 2) + "px";
+        g.style.height = (dragState.duration / 60 * PX_PER_HOUR - 4) + "px";
+        g.textContent = fmtRange(dragState.start, dragState.duration);
+        g.style.display = "flex";
+        setOpenMarksVisibility(dragState.col, s, dragState.duration);
+      } else if (resizeState) {
+        const en = Math.min(DAY_END, minAtY(resizeState.col, e.clientY) + SNAP);
+        let dur = Math.max(15, en - resizeState.block.start);
+        const next = Math.min(DAY_END, ...resizeState.occupied.filter(b => b.start > resizeState.block.start).map(b => b.start));
+        dur = Math.min(dur, next - resizeState.block.start);
+        resizeState.newDur = dur;
+        resizeState.el.style.height = (dur / 60 * PX_PER_HOUR - 4) + "px";
+        resizeState.rangeEl.textContent = fmtRange(resizeState.block.start, dur);
+      }
     });
-
-    document.getElementById('cancelRecurring').addEventListener('click', () => {
-      if (activeSlot) {
-        const rules = loadRecurring().filter(r => !(r.time === activeSlot.dataset.time && r.court === activeSlot.dataset.court));
-        saveRecurring(rules);
-        closeMenu();
-        render();
+    document.addEventListener("pointerup", e => {
+      if (dragState) {
+        const st = dragState;
+        dragState = null;
+        if (st.dragging) {
+          suppressClicksUntil = Date.now() + 300;
+          st.ghost.style.display = "none";
+          openNewMenu(st.court, st.start, e, st.duration);
+        }
+      } else if (resizeState) {
+        const st = resizeState;
+        resizeState = null;
+        suppressClicksUntil = Date.now() + 300;
+        if (st.newDur && st.newDur !== st.block.duration) {
+          if (st.block.virtual) {
+            const rule = recurringRules.find(r => r.id === st.block.ruleId);
+            if (rule) saveRule({ ...rule, duration: st.newDur });
+          } else {
+            const date = dateInput.value;
+            const day = getDay(date);
+            const stored = day.courts[st.court][st.block.id];
+            if (stored) { stored.duration = st.newDur; saveDay(date, day); }
+          }
+        } else {
+          render();
+        }
       }
     });
 
-    document.getElementById('closeMenu').addEventListener('click', closeMenu);
-    
-    // Duration selector listeners
-    document.querySelectorAll('[data-duration]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('[data-duration]').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        selectedDuration = parseInt(e.target.dataset.duration);
-        document.getElementById('durationDisplay').textContent = 'Selected: ' + selectedDuration + ' min';
-      });
-    });
-
-    document.getElementById('makeRecurringBtn').addEventListener('click', () => {
-      if (activeSlot) {
-        document.getElementById('recurringCourt').value = activeSlot.dataset.court;
-        document.getElementById('recurringTime').value = activeSlot.dataset.time;
-        document.getElementById('recurringStart').value = dateInput.value;
-        document.getElementById('recurringDuration').value = selectedDuration;
-      }
-      document.getElementById('recurringBackdrop').classList.add('show');
-    });
-
-    document.getElementById('recurringCancel').addEventListener('click', () => {
-      document.getElementById('recurringBackdrop').classList.remove('show');
-    });
-
-    document.getElementById('recurringSave').addEventListener('click', () => {
-      const rules = loadRecurring();
-      const court = document.getElementById('recurringCourt').value;
-      const time = document.getElementById('recurringTime').value;
-      const newDuration = parseInt(document.getElementById('recurringDuration').value);
-      
-      // Check existing recurring rules for this time/court
-      const existingRules = rules.filter(r => r.time === time && r.court === court);
-      const existingDuration = existingRules.reduce((sum, r) => sum + (r.duration || 60), 0);
-      
-      // Allow booking only if total doesn't exceed 60 minutes
-      if (existingDuration + newDuration > 60) {
-        alert(`Cannot book ${newDuration} min. Only ${60 - existingDuration} min available at this time.`);
-        return;
-      }
-      
-      const selectedDays = Array.from(document.querySelectorAll('.weekday-picker input:checked')).map(i => parseInt(i.value));
-      
-      // Generate unique ID using timestamp + random number
-      const uniqueId = 'rec-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
-      
-      rules.push({
-        id: uniqueId,
-        time: time,
-        court: court,
-        coach: document.getElementById('recurringCoach').value,
-        duration: newDuration,
-        start: document.getElementById('recurringStart').value,
-        end: document.getElementById('recurringEnd').value,
-        frequency: document.getElementById('recurringFrequency').value,
-        days: selectedDays.length ? selectedDays : [new Date(document.getElementById('recurringStart').value + 'T12:00:00').getDay()],
-        note: document.getElementById('recurringNote').value.trim()
-      });
-      saveRecurring(rules);
-      document.getElementById('recurringBackdrop').classList.remove('show');
-      render();
-    });
-    
-    cancelRecurringBtn.addEventListener('click', cancelRecurringSeries);
-
-    document.addEventListener('click', (e) => {
-      if (!menu.contains(e.target) && !e.target.classList.contains('slot')) {
-        closeMenu();
-      }
-    });
-
-    // Initialize
+    // ---------- Start ----------
     dateInput.value = ymd(new Date());
+    recurringRules = loadLocalRecurring();
+    setCloud(false);
+    document.getElementById("syncText").textContent = "Connecting…";
     render();
+    initFirebase();
   </script>
 </body>
 </html>
