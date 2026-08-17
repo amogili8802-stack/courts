@@ -2,43 +2,48 @@ rules_version = '2';
 
 // Access control for the LAGCC court schedule.
 //
-// Everything is closed unless the caller is signed in with a Google account
-// whose email has a document in `lagcc_allowed`. That collection IS the access
-// list: the document ID is the person's lowercased email, and the contents
-// don't matter (an empty document is fine).
+// Everything is closed unless the caller is signed in with a verified phone
+// number that has a document in `lagcc_allowed`. That collection IS the access
+// list. The document ID is the number in E.164 form, and a `name` field gives
+// the person the label their edits appear under:
 //
-//   Add a coach:     create lagcc_allowed/<their.email@example.com>
-//   Remove a coach:  delete that document
+//   Document ID:  +15551234567
+//   Field:        name (string)  e.g. "Anjali"
 //
-// Deliberately kept out of this file so the repository never carries staff
-// email addresses. Manage it in the Firebase console:
-// Firestore Database -> Data -> lagcc_allowed.
+//   Add a coach:     create that document
+//   Remove a coach:  delete it (they lose access on their next page load)
+//   Rename someone:  edit the name field
+//
+// Because only an admin can set `name` here, nobody can relabel their own
+// edits in the history.
+//
+// Phone numbers are deliberately kept out of this repository. Manage the list
+// in the Firebase console: Firestore Database -> Data -> lagcc_allowed.
 //
 // To apply: Firebase console -> Firestore Database -> Rules -> paste -> Publish.
-// (Add yourself to lagcc_allowed BEFORE publishing, or you'll lock yourself out
-// of the app — the console itself always keeps working.)
+// (Add your own number to lagcc_allowed BEFORE publishing, or you'll lock
+// yourself out of the app — the console itself always keeps working.)
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function callerEmail() {
-      return request.auth != null && request.auth.token.email != null
-        ? request.auth.token.email.lower()
-        : "";
+    function callerPhone() {
+      return request.auth != null ? request.auth.token.phone_number : "";
     }
 
     function isAllowed() {
       return request.auth != null
-        && request.auth.token.email_verified == true
-        && exists(/databases/$(database)/documents/lagcc_allowed/$(callerEmail()));
+        && callerPhone() != null
+        && callerPhone() != ""
+        && exists(/databases/$(database)/documents/lagcc_allowed/$(callerPhone()));
     }
 
-    // Signed-in people may check whether their own address is on the list, so
-    // the app can say "you're not on the access list" instead of failing
-    // silently. Nobody can read anyone else's entry or edit the list from the
-    // app — it's console-only.
-    match /lagcc_allowed/{email} {
-      allow get: if request.auth != null && callerEmail() == email;
+    // Signed-in people may read their own entry — that's how the app gets the
+    // name to label their edits with, and how it can say "you're not on the
+    // access list" instead of failing silently. Nobody can read anyone else's
+    // entry, list the collection, or write to it from the app.
+    match /lagcc_allowed/{phone} {
+      allow get: if request.auth != null && callerPhone() == phone;
       allow list, write: if false;
     }
 
