@@ -249,38 +249,26 @@
       font-size: 13.5px;
       color: var(--muted);
     }
-    .login-field { margin-bottom: 14px; }
-    .login-field label {
-      display: block;
-      margin-bottom: 5px;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--muted);
-    }
-    .login-field input {
-      width: 100%;
-      height: 44px;
-      padding: 0 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--surface);
-      color: var(--text);
-      font: inherit;
-      font-size: 14px;
-    }
-    .login-field input:focus { outline: 2px solid #8e6f57; outline-offset: 1px; }
     .login-error {
       display: none;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
+      padding: 9px 11px;
+      border: 1px solid #e6c9c4;
+      border-radius: 8px;
+      background: #fbeeec;
       font-size: 12px;
       font-weight: 650;
+      line-height: 1.4;
       color: var(--custom);
     }
     .login-error.show { display: block; }
-    .login-next {
+    .login-google {
       width: 100%;
       height: 46px;
-      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
       border: 1px solid #6b5443;
       border-radius: 8px;
       background: #6b5443;
@@ -288,7 +276,21 @@
       font-size: 14.5px;
       font-weight: 750;
     }
-    .login-next:hover { background: #5b4739; }
+    .login-google:hover { background: #5b4739; }
+    .login-google:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+      background: #6b5443;
+    }
+    .login-google .g-mark {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+      background: #fff;
+      border-radius: 2px;
+      padding: 1px;
+    }
+    .login-google:disabled .g-mark { display: none; }
     .login-note {
       margin: 14px 0 0;
       text-align: center;
@@ -730,6 +732,7 @@
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
@@ -824,21 +827,21 @@
   </div>
 
   <div class="login-screen" id="loginScreen">
-    <form class="login-card" id="loginForm" novalidate>
+    <div class="login-card">
       <h1 class="login-title">Login</h1>
-      <p class="login-sub">Enter your name and email to open the schedule.</p>
-      <div class="login-field">
-        <label for="loginName">Name</label>
-        <input type="text" id="loginName" autocomplete="name" maxlength="40" placeholder="e.g., Anjali" />
-      </div>
-      <div class="login-field">
-        <label for="loginEmail">Email</label>
-        <input type="email" id="loginEmail" autocomplete="email" maxlength="80" placeholder="you@example.com" />
-      </div>
+      <p class="login-sub">Sign in with your Google account to open the schedule.</p>
       <div class="login-error" id="loginError"></div>
-      <button type="submit" class="login-next" id="loginNext">Next</button>
-      <p class="login-note">Used to label your changes in the schedule's edit history. You stay signed in on this device until you log out.</p>
-    </form>
+      <button type="button" class="login-google" id="googleSignIn">
+        <svg class="g-mark" viewBox="0 0 18 18" aria-hidden="true">
+          <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/>
+          <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/>
+          <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
+        </svg>
+        <span id="googleSignInLabel">Continue with Google</span>
+      </button>
+      <p class="login-note">Only accounts on the schedule's access list can sign in. Your name and email label the changes you make in the edit history.</p>
+    </div>
   </div>
 
   <div class="modal-backdrop" id="recurringBackdrop">
@@ -914,6 +917,8 @@
 
     // ---------- State ----------
     let db = null;
+    let auth = null;
+    let recurringSub = null;       // unsubscribe fn for the recurring-rules listener
     let cloudOk = false;
     let daySub = null;             // unsubscribe fn for current date's doc listener
     let dayCache = {};             // date -> normalized day
@@ -1040,66 +1045,65 @@
     }
 
     // ---------- Session / who's editing ----------
-    // The login screen is an identity prompt, not authentication: nothing is
-    // verified and there's no password. It exists so every edit carries a name
-    // and email in the day's history. The session lives in localStorage, so
-    // you stay signed in on this device until you press Log out.
-    const USER_KEY = "lagcc:user";
+    // Access is Firebase Auth (Google sign-in) plus an allow-list held in
+    // Firestore: one doc per person under lagcc_allowed, keyed by lowercased
+    // email. The security rules enforce it — this client-side check only
+    // decides what message to show. Signing in also supplies the name and
+    // email that label each entry in the edit history.
+    const ALLOWED = "lagcc_allowed";
     let currentUser = null;
 
-    function loadUser() {
-      try {
-        const raw = JSON.parse(localStorage.getItem(USER_KEY) || "null");
-        if (raw && typeof raw.name === "string" && raw.name.trim()) {
-          return {
-            name: raw.name.trim(),
-            email: typeof raw.email === "string" ? raw.email.trim() : ""
-          };
-        }
-      } catch (e) { console.error("loadUser", e); }
-      return null;
+    function setLoginBusy(busy, label) {
+      const btn = document.getElementById("googleSignIn");
+      btn.disabled = busy;
+      document.getElementById("googleSignInLabel").textContent =
+        label || (busy ? "Signing in…" : "Continue with Google");
     }
-    function saveUser(user) {
-      currentUser = user;
-      try {
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
-        localStorage.setItem("lagcc:editorName", user.name);   // legacy mirror
-      } catch (e) {
-        // Storage blocked (private browsing, quota). The session still works
-        // for this tab; it just won't survive a reload.
-        console.error("saveUser", e);
-      }
+    function loginError(msg) {
+      const err = document.getElementById("loginError");
+      err.textContent = msg;
+      err.classList.toggle("show", Boolean(msg));
     }
-    function showLogin() {
+    function showLogin(opts) {
+      const checking = opts && opts.checking;
       document.getElementById("sessionPill").classList.remove("show");
-      document.getElementById("loginError").classList.remove("show");
-      const nameEl = document.getElementById("loginName");
-      const emailEl = document.getElementById("loginEmail");
-      // Carry over a name left by the old prompt-based flow, if there is one.
-      nameEl.value = (localStorage.getItem("lagcc:editorName") || "").trim();
-      emailEl.value = "";
       document.getElementById("loginScreen").classList.add("show");
-      nameEl.focus();
+      setLoginBusy(Boolean(checking), checking ? "Checking sign-in…" : null);
     }
     function showSchedule() {
+      loginError("");
+      setLoginBusy(false);
       document.getElementById("loginScreen").classList.remove("show");
-      const pill = document.getElementById("sessionPill");
       const nameEl = document.getElementById("sessionName");
       nameEl.textContent = currentUser.name;
       nameEl.title = currentUser.email || currentUser.name;
-      pill.classList.add("show");
+      document.getElementById("sessionPill").classList.add("show");
+    }
+    // Signing out drops the cached copy of the schedule too, so a shared
+    // computer isn't left holding it after someone leaves.
+    function clearLocalSchedule() {
+      try {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith("lagcc:v2:") || k.startsWith("lagcc:2"))
+          .forEach(k => localStorage.removeItem(k));
+        localStorage.removeItem("lagcc:recurring");
+        localStorage.removeItem("lagcc:editorName");
+        localStorage.removeItem("lagcc:user");
+      } catch (e) { console.error("clearLocalSchedule", e); }
+      dayCache = {};
+      recurringRules = [];
     }
     function logout() {
-      try {
-        localStorage.removeItem(USER_KEY);
-        localStorage.removeItem("lagcc:editorName");
-      } catch (e) { console.error("logout", e); }
-      currentUser = null;
       editLogOpen = false;
       closeMenu();
-      showLogin();
+      clearLocalSchedule();
+      if (auth) {
+        auth.signOut().catch(e => console.error("signOut", e));
+      } else {
+        currentUser = null;
+        showLogin();
+      }
     }
-    function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
 
     function getEditorName() {
       return (currentUser && currentUser.name) || "Someone";
@@ -1896,24 +1900,98 @@
       });
     }
 
+    // Live listeners only run while someone is signed in and on the allow-list;
+    // starting them earlier would just collect permission-denied errors.
+    function startCloud() {
+      if (!db || recurringSub) return;
+      recurringSub = db.collection(RECURRING).onSnapshot(qs => {
+        setCloud(true);
+        recurringRules = qs.docs.filter(d => !d.id.startsWith("_")).map(d => d.data());
+        saveLocalRecurring(recurringRules);
+        render();
+      }, err => {
+        console.error("recurring listener", err);
+        setCloud(false);
+      });
+      subscribeDay(dateInput.value);
+    }
+    function stopCloud() {
+      if (recurringSub) { recurringSub(); recurringSub = null; }
+      if (daySub) { daySub(); daySub = null; }
+      setCloud(false);
+    }
+
+    async function handleAuthChange(user) {
+      if (!user) {
+        currentUser = null;
+        stopCloud();
+        showLogin();
+        return;
+      }
+      const email = (user.email || "").toLowerCase();
+      let allowed = false;
+      try {
+        allowed = (await db.collection(ALLOWED).doc(email).get()).exists;
+      } catch (e) {
+        // The rules deny this read to anyone not on the list, so a failure
+        // here means the same thing as a missing document.
+        console.error("allow-list check", e);
+        allowed = false;
+      }
+      if (!allowed) {
+        await auth.signOut().catch(e => console.error("signOut", e));
+        loginError(`${email || "That account"} isn't on the access list for this schedule. Ask an admin to add it, then try again.`);
+        return;
+      }
+      currentUser = { name: user.displayName || email, email };
+      showSchedule();
+      startCloud();
+      render();
+    }
+
     function initFirebase() {
       try {
-        if (typeof firebase === "undefined") { setCloud(false); return; }
+        if (typeof firebase === "undefined") throw new Error("Firebase SDK failed to load");
         firebase.initializeApp(FIREBASE_CONFIG);
         db = firebase.firestore();
-        db.collection(RECURRING).onSnapshot(qs => {
-          setCloud(true);
-          recurringRules = qs.docs.filter(d => !d.id.startsWith("_")).map(d => d.data());
-          saveLocalRecurring(recurringRules);
-          render();
-        }, err => {
-          console.error("recurring listener", err);
-          setCloud(false);
+        auth = firebase.auth();
+        auth.onAuthStateChanged(handleAuthChange, err => {
+          console.error("auth state", err);
+          showLogin();
+          loginError("Couldn't reach the sign-in service. Check your connection and reload.");
         });
-        subscribeDay(dateInput.value);
       } catch (e) {
         console.error("firebase init", e);
         setCloud(false);
+        showLogin();
+        setLoginBusy(true, "Sign-in unavailable");
+        loginError("Couldn't load the sign-in service. Check your connection and reload the page.");
+      }
+    }
+
+    async function signInWithGoogle() {
+      if (!auth) return;
+      loginError("");
+      setLoginBusy(true);
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        await auth.signInWithPopup(provider);
+        // handleAuthChange takes it from here.
+      } catch (e) {
+        console.error("signIn", e);
+        setLoginBusy(false);
+        if (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") {
+          loginError("");
+        } else if (e.code === "auth/popup-blocked") {
+          loginError("Your browser blocked the sign-in popup. Allow popups for this site and try again.");
+        } else if (e.code === "auth/unauthorized-domain") {
+          loginError("This site isn't an authorised domain for sign-in yet. Add it under Firebase → Authentication → Settings → Authorised domains.");
+        } else if (e.code === "auth/operation-not-allowed") {
+          loginError("Google sign-in isn't switched on for this Firebase project yet.");
+        } else {
+          loginError("Sign-in failed. Please try again.");
+        }
       }
     }
 
@@ -2088,20 +2166,7 @@
       }
     });
 
-    document.getElementById("loginForm").addEventListener("submit", e => {
-      e.preventDefault();
-      const name = document.getElementById("loginName").value.trim();
-      const email = document.getElementById("loginEmail").value.trim();
-      const err = document.getElementById("loginError");
-      const reject = msg => { err.textContent = msg; err.classList.add("show"); };
-      if (!name) return reject("Enter your name.");
-      if (!email) return reject("Enter your email.");
-      if (!validEmail(email)) return reject("That email doesn't look right.");
-      err.classList.remove("show");
-      saveUser({ name, email });
-      showSchedule();
-      render();
-    });
+    document.getElementById("googleSignIn").addEventListener("click", signInWithGoogle);
     document.getElementById("logoutBtn").addEventListener("click", logout);
 
     // ---------- Start ----------
@@ -2109,8 +2174,9 @@
     recurringRules = loadLocalRecurring();
     setCloud(false);
     document.getElementById("syncText").textContent = "Connecting…";
-    currentUser = loadUser();
-    if (currentUser) showSchedule(); else showLogin();
+    // Stay on the login screen until Firebase reports whether this browser
+    // already has a session, so a signed-in user doesn't see it flash past.
+    showLogin({ checking: true });
     render();
     initFirebase();
   </script>
