@@ -33,11 +33,13 @@
       font-size: 40px;
       font-weight: 800;
       color: var(--text);
+      text-align: center;
     }
     .subtitle {
       margin: 8px 0 0;
       font-size: 17px;
       color: var(--muted);
+      text-align: center;
     }
     .toolbar {
       margin-top: 28px;
@@ -261,6 +263,27 @@
       overflow-y: auto;
     }
     .menu.show { display: block; }
+    .menu button.menu-close {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 26px;
+      height: 26px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #b3261e;
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .menu button.menu-close:hover { background: #fee2e2; }
     .menu-label {
       padding: 6px 8px 8px;
       color: var(--muted);
@@ -268,7 +291,7 @@
       font-weight: 700;
     }
     .menu-title {
-      padding: 4px 8px 6px;
+      padding: 4px 30px 6px 8px;
       font-size: 14px;
       font-weight: 750;
     }
@@ -291,6 +314,12 @@
       font-weight: 700;
     }
     .menu button.danger:hover { background: #fecaca !important; }
+    .menu button.text-danger {
+      background: transparent;
+      color: #b3261e;
+      font-weight: 600;
+    }
+    .menu button.text-danger:hover { background: #f6f1e8; }
     .menu-sep { height: 1px; background: #eee6dc; margin: 6px 0; }
     .menu select {
       width: 100%;
@@ -471,6 +500,7 @@
   </div>
 
   <div class="menu" id="menu">
+    <button id="closeMenu" class="menu-close" aria-label="Close">&times;</button>
     <div class="menu-title" id="menuTitle"></div>
     <div class="booking-summary" id="bookingSummary" style="display:none;"></div>
     <div class="menu-msg" id="menuMsg"></div>
@@ -501,13 +531,11 @@
       <div class="menu-sep"></div>
       <button id="makeRecurringEditBtn">↻ Make recurring...</button>
       <button id="deleteBooking" class="danger">Cancel booking</button>
-      <button id="skipOccurrence" class="danger">Skip just this date</button>
+      <button id="skipOccurrence" class="text-danger">Skip just this date</button>
       <button id="cancelSeries" class="danger">Cancel entire series…</button>
       <button id="restoreBtn">Restore this slot</button>
     </div>
 
-    <div class="menu-sep"></div>
-    <button id="closeMenu">Close</button>
   </div>
 
   <div class="modal-backdrop" id="recurringBackdrop">
@@ -992,7 +1020,7 @@
       el.addEventListener("click", e => {
         e.stopPropagation();
         if (Date.now() < suppressClicksUntil) return;
-        openEditMenu(court, b, el);
+        openEditMenu(court, b, e);
       });
       return el;
     }
@@ -1088,7 +1116,7 @@
       positionMenu(clickEvent.clientX, clickEvent.clientY);
     }
 
-    function openEditMenu(court, block, anchorEl) {
+    function openEditMenu(court, block, clickEvent) {
       commitNote();
       activeCtx = {
         mode: "edit", court,
@@ -1124,8 +1152,7 @@
         canMakeRecurring: !block.virtual && !isSkip && !isCancelledOneOff
       });
       render();
-      const rect = anchorEl.getBoundingClientRect();
-      positionMenu(rect.right, rect.top);
+      positionMenu(clickEvent.clientX, clickEvent.clientY);
     }
 
     function closeMenu() {
@@ -1243,7 +1270,7 @@
       const btn = document.getElementById("cancelSeries");
       if (btn.dataset.armed !== "1") {
         btn.dataset.armed = "1";
-        btn.textContent = "Really cancel ALL future dates?";
+        btn.textContent = "Confirm cancel";
         seriesConfirmTimer = setTimeout(resetSeriesConfirm, 4000);
         return;
       }
