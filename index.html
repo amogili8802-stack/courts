@@ -74,6 +74,57 @@
     .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #b0a89d; }
     .sync-dot.on { background: #6f8065; }
     .sync-dot.off { background: #c9a24a; }
+    .link-btn {
+      height: auto;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .link-btn:hover { background: transparent; color: var(--text); }
+    .edit-log {
+      display: none;
+      justify-content: center;
+      position: relative;
+      margin: 0 0 18px;
+    }
+    .edit-log.show { display: flex; }
+    .edit-log-summary {
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+      text-decoration: underline dotted;
+      text-underline-offset: 3px;
+    }
+    .edit-log-summary:hover { color: var(--text); }
+    .edit-log-list {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(75,53,40,.14);
+      padding: 8px;
+      font-size: 12px;
+      min-width: 260px;
+      max-width: 360px;
+      z-index: 40;
+    }
+    .edit-log-list.show { display: block; }
+    .edit-log-row {
+      padding: 5px 6px;
+      color: var(--text);
+      border-bottom: 1px solid #eee6dc;
+    }
+    .edit-log-row:last-child { border-bottom: 0; }
     .legend {
       display: flex;
       align-items: center;
@@ -364,6 +415,30 @@
       color: #fff;
       font-weight: 700;
     }
+    .coaches-grid button.custom-coach-btn {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px dashed var(--border);
+    }
+    .custom-coach-row {
+      display: none;
+      gap: 6px;
+      padding: 0 2px;
+      margin-bottom: 6px;
+    }
+    .custom-coach-row.show { display: flex; }
+    .custom-coach-row input {
+      flex: 1;
+      padding: 0 9px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+    .custom-coach-row button {
+      padding: 0 14px;
+    }
+    .coach-edit-row { margin: 0 2px 6px; }
     .duration-buttons {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -388,8 +463,22 @@
       padding: 10px;
       font-size: 13px;
     }
+    .booking-summary .who-row { display: flex; align-items: center; gap: 6px; }
     .booking-summary .who { font-weight: 750; }
     .booking-summary .when { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .edit-coach-btn {
+      height: 22px;
+      width: 22px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 0;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .edit-coach-btn:hover { background: #eee6dc; color: var(--text); }
 
     .modal-backdrop {
       display: none;
@@ -476,12 +565,18 @@
       </div>
       <div class="long-date" id="longDate"></div>
       <div class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
+      <div class="sync-status">
+        <span id="editorLabel"></span>
+        <button id="changeEditorBtn" class="link-btn">change</button>
+      </div>
     </div>
 
     <div class="legend" id="legend">
       <div class="legend-item"><span class="swatch open"></span>Open — click to book the hour</div>
       <div class="legend-item">↕ Hold + drag for 15 / 30 / 45 min lessons</div>
     </div>
+
+    <div class="edit-log" id="editLog"></div>
 
     <div class="schedule">
       <div class="grid-head">
@@ -498,6 +593,14 @@
     <button id="closeMenu" class="menu-close" aria-label="Close">&times;</button>
     <div class="menu-title" id="menuTitle"></div>
     <div class="booking-summary" id="bookingSummary" style="display:none;"></div>
+    <div class="coach-edit-row" id="coachEditRow" style="display:none;">
+      <div class="menu-label">Change coach to:</div>
+      <div class="coaches-grid" id="editCoachGrid"></div>
+      <div class="custom-coach-row" id="editCustomCoachRow">
+        <input type="text" id="editCustomCoachInput" placeholder="Type a name…" maxlength="40" />
+        <button id="editCustomCoachBook">Book</button>
+      </div>
+    </div>
     <div class="menu-msg" id="menuMsg"></div>
 
     <div id="newSection">
@@ -514,6 +617,10 @@
       <div class="menu-sep"></div>
       <div class="menu-label">Book with coach:</div>
       <div class="coaches-grid" id="coachGrid"></div>
+      <div class="custom-coach-row" id="customCoachRow">
+        <input type="text" id="customCoachInput" placeholder="Type a name…" maxlength="40" />
+        <button id="customCoachBook">Book</button>
+      </div>
     </div>
 
     <div id="noteSection">
@@ -720,7 +827,73 @@
           }
         }
       }
+      if (raw && Array.isArray(raw.edits)) {
+        day.edits = raw.edits
+          .filter(e => e && typeof e.name === "string" && typeof e.action === "string" && typeof e.at === "number")
+          .slice(0, 8);
+      }
       return day;
+    }
+
+    // ---------- Who's editing / per-day activity log ----------
+    // Only prompts the first time someone actually makes an edit — just
+    // viewing the schedule never triggers it.
+    function getEditorName() {
+      let name = (localStorage.getItem("lagcc:editorName") || "").trim();
+      if (!name) {
+        name = ((window.prompt("Your name, so others can see who made changes:") || "").trim()) || "Someone";
+        localStorage.setItem("lagcc:editorName", name);
+        updateEditorLabel();
+      }
+      return name;
+    }
+    function promptEditorName() {
+      const current = localStorage.getItem("lagcc:editorName") || "";
+      const name = (window.prompt("Your name:", current) || "").trim();
+      if (name) {
+        localStorage.setItem("lagcc:editorName", name);
+        updateEditorLabel();
+      }
+    }
+    function updateEditorLabel() {
+      const label = document.getElementById("editorLabel");
+      const btn = document.getElementById("changeEditorBtn");
+      const name = localStorage.getItem("lagcc:editorName");
+      if (label) label.textContent = name ? `Editing as ${name}` : "Name not set";
+      if (btn) btn.textContent = name ? "change" : "set name";
+    }
+    function logEdit(day, action) {
+      const entry = { name: getEditorName(), action, at: Date.now() };
+      day.edits = [entry].concat(Array.isArray(day.edits) ? day.edits : []).slice(0, 8);
+    }
+    function relTime(ts) {
+      const diff = Date.now() - ts;
+      if (diff < 60000) return "just now";
+      if (diff < 3600000) return Math.round(diff / 60000) + "m ago";
+      if (diff < 86400000) return Math.round(diff / 3600000) + "h ago";
+      return Math.round(diff / 86400000) + "d ago";
+    }
+    function renderEditLog() {
+      const log = document.getElementById("editLog");
+      const day = getDay(dateInput.value);
+      const edits = Array.isArray(day.edits) ? day.edits : [];
+      log.innerHTML = "";
+      if (!edits.length) { log.classList.remove("show"); return; }
+      log.classList.add("show");
+      const summary = document.createElement("div");
+      summary.className = "edit-log-summary";
+      summary.textContent = `Last edited by ${edits[0].name} · ${relTime(edits[0].at)}`;
+      const list = document.createElement("div");
+      list.className = "edit-log-list";
+      edits.forEach(e => {
+        const row = document.createElement("div");
+        row.className = "edit-log-row";
+        row.textContent = `${e.name} · ${relTime(e.at)} — ${e.action}`;
+        list.appendChild(row);
+      });
+      summary.addEventListener("click", () => list.classList.toggle("show"));
+      log.appendChild(summary);
+      log.appendChild(list);
     }
 
     // ---------- Data access ----------
@@ -728,7 +901,8 @@
       if (!(date in dayCache)) dayCache[date] = loadLocalDay(date);
       return dayCache[date];
     }
-    function saveDay(date, day) {
+    function saveDay(date, day, action) {
+      if (action) logEdit(day, action);
       dayCache[date] = day;
       saveLocalDay(date, day);
       if (db) {
@@ -738,6 +912,12 @@
         });
       }
       render();
+    }
+    // Logs an edit against a day's history without any court changes (used
+    // for recurring-series actions, which live in the rules collection).
+    function logToDay(date, action) {
+      const day = getDay(date);
+      saveDay(date, day, action);
     }
     function saveRule(rule) {
       recurringRules = recurringRules.filter(r => r.id !== rule.id).concat([rule]);
@@ -958,6 +1138,7 @@
         gridBody.appendChild(col);
       }
       updateGhost();
+      renderEditLog();
     }
 
     function makeBlock(b, court) {
@@ -1089,6 +1270,9 @@
       document.getElementById("restoreBtn").style.display = opts.canRestore ? "block" : "none";
       document.getElementById("noteSection").style.display = opts.hideNote ? "none" : "block";
       document.getElementById("makeRecurringEditBtn").style.display = opts.canMakeRecurring ? "block" : "none";
+      document.getElementById("coachEditRow").style.display = "none";
+      document.getElementById("customCoachRow").classList.remove("show");
+      document.getElementById("editCustomCoachRow").classList.remove("show");
       resetSeriesConfirm();
       clearMsg();
     }
@@ -1125,15 +1309,32 @@
 
       const summary = document.getElementById("bookingSummary");
       summary.innerHTML = "";
-      const who = document.createElement("div");
+      const whoRow = document.createElement("div");
+      whoRow.className = "who-row";
+      const who = document.createElement("span");
       who.className = "who";
       who.textContent = isSkip || isCancelledOneOff
         ? "Cancelled" + (block.coach ? ` (was ${block.coach})` : "")
         : block.coach + (block.virtual ? " · recurring ↻" : "");
+      whoRow.appendChild(who);
+      if (!isSkip && !isCancelledOneOff) {
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "edit-coach-btn";
+        editBtn.title = "Change coach";
+        editBtn.textContent = "✏️";
+        editBtn.addEventListener("click", () => {
+          const row = document.getElementById("coachEditRow");
+          row.style.display = row.style.display === "none" ? "block" : "none";
+          document.getElementById("customCoachRow").classList.remove("show");
+          document.getElementById("editCustomCoachRow").classList.remove("show");
+        });
+        whoRow.appendChild(editBtn);
+      }
       const when = document.createElement("div");
       when.className = "when";
       when.textContent = `Court ${court} · ${fmtRange(block.start, block.duration)}`;
-      summary.appendChild(who);
+      summary.appendChild(whoRow);
       summary.appendChild(when);
 
       document.getElementById("slotNote").value = block.note || "";
@@ -1173,7 +1374,7 @@
         const stored = day.courts[activeCtx.court][activeCtx.bookingId];
         if (stored) {
           if (val) stored.note = val; else delete stored.note;
-          saveDay(date, day);
+          saveDay(date, day, `Updated note on Court ${activeCtx.court} · ${fmtRange(b.start, b.duration)}`);
         }
       }
     }
@@ -1228,17 +1429,49 @@
       day.courts[court][newId("b")] = b;
       activeCtx = null;
       menu.classList.remove("show");
-      saveDay(date, day);
+      saveDay(date, day, `Booked ${coach} on Court ${court} · ${fmtRange(start, duration)}`);
     }
 
-    function deleteActiveBooking() {
+    // Reassign the coach on an existing booking (e.g. to fix an accidental click).
+    function changeBookingCoach(newCoach) {
+      if (!activeCtx || activeCtx.mode !== "edit") return;
+      const b = activeCtx.booking;
+      if (!b || !newCoach || newCoach === b.coach) {
+        document.getElementById("coachEditRow").style.display = "none";
+        return;
+      }
+      const oldCoach = b.coach;
+      const court = activeCtx.court;
+      const label = `Changed coach from ${oldCoach} to ${newCoach} on Court ${court} · ${fmtRange(b.start, b.duration)}`;
+      if (b.virtual) {
+        const rule = recurringRules.find(r => r.id === b.ruleId);
+        activeCtx = null;
+        menu.classList.remove("show");
+        if (rule) {
+          saveRule({ ...rule, coach: newCoach });
+          logToDay(dateInput.value, label + " (recurring series)");
+        }
+      } else {
+        const date = dateInput.value;
+        const day = getDay(date);
+        const stored = day.courts[court][activeCtx.bookingId];
+        if (stored) stored.coach = newCoach;
+        activeCtx = null;
+        menu.classList.remove("show");
+        if (stored) saveDay(date, day, label);
+      }
+    }
+
+    function deleteActiveBooking(actionLabel) {
       if (!activeCtx || !activeCtx.bookingId) return;
+      const b = activeCtx.booking;
       const date = dateInput.value;
       const day = getDay(date);
       delete day.courts[activeCtx.court][activeCtx.bookingId];
+      const label = actionLabel || `Cancelled booking on Court ${activeCtx.court} · ${fmtRange(b.start, b.duration)}`;
       activeCtx = null;
       menu.classList.remove("show");
-      saveDay(date, day);
+      saveDay(date, day, label);
     }
 
     function skipOccurrence() {
@@ -1250,9 +1483,10 @@
         start: b.start, duration: b.duration, coach: b.coach,
         status: "skip", ruleId: b.ruleId
       };
+      const label = `Skipped one occurrence on Court ${activeCtx.court} · ${fmtRange(b.start, b.duration)}`;
       activeCtx = null;
       menu.classList.remove("show");
-      saveDay(date, day);
+      saveDay(date, day, label);
     }
 
     function resetSeriesConfirm() {
@@ -1269,15 +1503,22 @@
         seriesConfirmTimer = setTimeout(resetSeriesConfirm, 4000);
         return;
       }
-      const ruleId = activeCtx && activeCtx.booking && activeCtx.booking.ruleId;
+      const b = activeCtx && activeCtx.booking;
+      const ruleId = b && b.ruleId;
+      const court = activeCtx && activeCtx.court;
       activeCtx = null;
       menu.classList.remove("show");
-      if (ruleId) deleteRule(ruleId);
+      if (ruleId) {
+        deleteRule(ruleId);
+        if (b) logToDay(dateInput.value, `Cancelled recurring series on Court ${court} · ${fmtRange(b.start, b.duration)}`);
+      }
     }
 
     function restoreSlot() {
       // Removes a skip entry (recurring resumes) or a cancelled one-off marker.
-      deleteActiveBooking();
+      const b = activeCtx && activeCtx.booking;
+      const label = b ? `Restored slot on Court ${activeCtx.court} · ${fmtRange(b.start, b.duration)}` : undefined;
+      deleteActiveBooking(label);
     }
 
     // ---------- Recurring modal ----------
@@ -1337,6 +1578,7 @@
       document.getElementById("recurringNote").value = "";
       if (activeCtx) { activeCtx = null; menu.classList.remove("show"); }
       saveRule(rule);
+      logToDay(start, `Created recurring booking with ${rule.coach} on Court ${rule.court} · ${fmtMin(parseHM(rule.time))}`);
     }
 
     // ---------- Firebase (Firestore, with localStorage fallback) ----------
@@ -1404,14 +1646,52 @@
     document.getElementById("todayBtn").addEventListener("click", () => setDate(ymd(new Date())));
     dateInput.addEventListener("change", () => setDate(dateInput.value));
 
-    const coachGrid = document.getElementById("coachGrid");
-    for (const c of Object.keys(COACHES)) {
-      const btn = document.createElement("button");
-      btn.textContent = c;
-      btn.style.background = COACHES[c];
-      btn.addEventListener("click", () => addBooking(c));
-      coachGrid.appendChild(btn);
+    // Builds a coach-picker grid (5 named coaches + a "Custom" button that
+    // reveals a free-text row) and wires it to call onPick(name).
+    function buildCoachButtons(gridEl, customRowEl, onPick) {
+      gridEl.innerHTML = "";
+      for (const c of Object.keys(COACHES)) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = c;
+        btn.style.background = COACHES[c];
+        btn.addEventListener("click", () => { customRowEl.classList.remove("show"); onPick(c); });
+        gridEl.appendChild(btn);
+      }
+      const customBtn = document.createElement("button");
+      customBtn.type = "button";
+      customBtn.className = "custom-coach-btn";
+      customBtn.textContent = "Custom";
+      customBtn.addEventListener("click", () => {
+        customRowEl.classList.add("show");
+        const input = customRowEl.querySelector("input");
+        input.value = "";
+        input.focus();
+      });
+      gridEl.appendChild(customBtn);
     }
+    function wireCustomCoachRow(rowEl, onPick) {
+      const input = rowEl.querySelector("input");
+      const bookBtn = rowEl.querySelector("button");
+      const submit = () => {
+        const val = input.value.trim();
+        if (!val) return;
+        rowEl.classList.remove("show");
+        onPick(val);
+      };
+      bookBtn.addEventListener("click", submit);
+      input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); submit(); } });
+    }
+
+    const coachGrid = document.getElementById("coachGrid");
+    const customCoachRow = document.getElementById("customCoachRow");
+    buildCoachButtons(coachGrid, customCoachRow, coach => addBooking(coach));
+    wireCustomCoachRow(customCoachRow, coach => addBooking(coach));
+
+    const editCoachGrid = document.getElementById("editCoachGrid");
+    const editCustomCoachRow = document.getElementById("editCustomCoachRow");
+    buildCoachButtons(editCoachGrid, editCustomCoachRow, coach => changeBookingCoach(coach));
+    wireCustomCoachRow(editCustomCoachRow, coach => changeBookingCoach(coach));
 
     document.getElementById("startSelect").addEventListener("change", e => {
       if (activeCtx && activeCtx.mode === "new") {
@@ -1427,7 +1707,7 @@
       });
     });
 
-    document.getElementById("deleteBooking").addEventListener("click", deleteActiveBooking);
+    document.getElementById("deleteBooking").addEventListener("click", () => deleteActiveBooking());
     document.getElementById("skipOccurrence").addEventListener("click", skipOccurrence);
     document.getElementById("cancelSeries").addEventListener("click", cancelSeries);
     document.getElementById("restoreBtn").addEventListener("click", restoreSlot);
@@ -1492,7 +1772,10 @@
             const date = dateInput.value;
             const day = getDay(date);
             const stored = day.courts[st.court][st.block.id];
-            if (stored) { stored.duration = st.newDur; saveDay(date, day); }
+            if (stored) {
+              stored.duration = st.newDur;
+              saveDay(date, day, `Changed duration to ${st.newDur} min on Court ${st.court} · ${fmtMin(st.block.start)}`);
+            }
           }
         } else {
           render();
@@ -1500,11 +1783,14 @@
       }
     });
 
+    document.getElementById("changeEditorBtn").addEventListener("click", promptEditorName);
+
     // ---------- Start ----------
     dateInput.value = ymd(new Date());
     recurringRules = loadLocalRecurring();
     setCloud(false);
     document.getElementById("syncText").textContent = "Connecting…";
+    updateEditorLabel();
     render();
     initFirebase();
   </script>
