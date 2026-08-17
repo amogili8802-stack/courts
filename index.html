@@ -76,18 +76,47 @@
     .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #b0a89d; }
     .sync-dot.on { background: #6f8065; }
     .sync-dot.off { background: #c9a24a; }
-    .link-btn {
-      height: auto;
-      border: 0;
-      background: transparent;
-      padding: 0;
-      color: var(--muted);
-      font-size: 12px;
+    /* Signed-in pill, top-left — mirrors the "Last edited" pill opposite it. */
+    .session-pill {
+      display: none;
+      position: absolute;
+      top: 28px;
+      left: 40px;
+      align-items: center;
+      gap: 8px;
+      max-width: 290px;
+      padding: 6px 7px 6px 13px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      box-shadow: 0 1px 4px rgba(75,53,40,.06);
+      font-size: 11.5px;
       font-weight: 650;
-      text-decoration: underline;
+      color: var(--muted);
+      z-index: 30;
+    }
+    .session-pill.show { display: flex; }
+    .session-name {
+      color: var(--text);
+      font-weight: 750;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .session-logout {
+      height: auto;
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
       cursor: pointer;
     }
-    .link-btn:hover { background: transparent; color: var(--text); }
+    .session-logout:hover { background: #f0e9df; color: var(--text); }
+
     /* "Last edited" — a single collapsed button pinned to the top-right of the
        page; clicking it drops down the full edit history for the day. Returns
        to the centred flow position under the legend on narrow screens. */
@@ -175,6 +204,97 @@
       }
       .edit-log.show { display: flex; justify-content: center; }
       .edit-log-list { left: 50%; right: auto; transform: translateX(-50%); }
+      .session-pill {
+        position: relative;
+        top: auto;
+        left: auto;
+        margin: 0 0 14px;
+      }
+      .session-pill.show { display: inline-flex; }
+    }
+
+    /* Login gate. This is an identity prompt, not authentication — nothing is
+       verified and no password is involved; the name and email it collects are
+       what label each entry in the edit history. */
+    .login-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: var(--bg);
+    }
+    .login-screen.show { display: flex; }
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 34px 32px 26px;
+      box-shadow: 0 10px 30px rgba(75,53,40,.10);
+    }
+    .login-title {
+      margin: 0;
+      font-size: 34px;
+      font-weight: 800;
+      text-align: center;
+      color: var(--text);
+    }
+    .login-sub {
+      margin: 8px 0 22px;
+      text-align: center;
+      font-size: 13.5px;
+      color: var(--muted);
+    }
+    .login-field { margin-bottom: 14px; }
+    .login-field label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .login-field input {
+      width: 100%;
+      height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+    }
+    .login-field input:focus { outline: 2px solid #8e6f57; outline-offset: 1px; }
+    .login-error {
+      display: none;
+      margin-bottom: 12px;
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--custom);
+    }
+    .login-error.show { display: block; }
+    .login-next {
+      width: 100%;
+      height: 46px;
+      margin-top: 4px;
+      border: 1px solid #6b5443;
+      border-radius: 8px;
+      background: #6b5443;
+      color: #fff;
+      font-size: 14.5px;
+      font-weight: 750;
+    }
+    .login-next:hover { background: #5b4739; }
+    .login-note {
+      margin: 14px 0 0;
+      text-align: center;
+      font-size: 11.5px;
+      line-height: 1.4;
+      color: var(--muted);
     }
     .legend {
       display: flex;
@@ -614,6 +734,11 @@
 </head>
 <body>
   <div class="page">
+    <div class="session-pill" id="sessionPill">
+      <span class="session-name" id="sessionName"></span>
+      <button type="button" class="session-logout" id="logoutBtn">Log out</button>
+    </div>
+
     <div>
       <h1>LAGCC Court Schedule</h1>
     </div>
@@ -627,10 +752,6 @@
       </div>
       <div class="long-date" id="longDate"></div>
       <div class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
-      <div class="sync-status">
-        <span id="editorLabel"></span>
-        <button id="changeEditorBtn" class="link-btn">change</button>
-      </div>
     </div>
 
     <div class="legend" id="legend">
@@ -700,6 +821,24 @@
       <button id="restoreBtn">Restore this slot</button>
     </div>
 
+  </div>
+
+  <div class="login-screen" id="loginScreen">
+    <form class="login-card" id="loginForm" novalidate>
+      <h1 class="login-title">Login</h1>
+      <p class="login-sub">Enter your name and email to open the schedule.</p>
+      <div class="login-field">
+        <label for="loginName">Name</label>
+        <input type="text" id="loginName" autocomplete="name" maxlength="40" placeholder="e.g., Anjali" />
+      </div>
+      <div class="login-field">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" autocomplete="email" maxlength="80" placeholder="you@example.com" />
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <button type="submit" class="login-next" id="loginNext">Next</button>
+      <p class="login-note">Used to label your changes in the schedule's edit history. You stay signed in on this device until you log out.</p>
+    </form>
   </div>
 
   <div class="modal-backdrop" id="recurringBackdrop">
@@ -900,35 +1039,74 @@
       return day;
     }
 
-    // ---------- Who's editing / per-day activity log ----------
-    // Only prompts the first time someone actually makes an edit — just
-    // viewing the schedule never triggers it.
+    // ---------- Session / who's editing ----------
+    // The login screen is an identity prompt, not authentication: nothing is
+    // verified and there's no password. It exists so every edit carries a name
+    // and email in the day's history. The session lives in localStorage, so
+    // you stay signed in on this device until you press Log out.
+    const USER_KEY = "lagcc:user";
+    let currentUser = null;
+
+    function loadUser() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(USER_KEY) || "null");
+        if (raw && typeof raw.name === "string" && raw.name.trim()) {
+          return {
+            name: raw.name.trim(),
+            email: typeof raw.email === "string" ? raw.email.trim() : ""
+          };
+        }
+      } catch (e) { console.error("loadUser", e); }
+      return null;
+    }
+    function saveUser(user) {
+      currentUser = user;
+      try {
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        localStorage.setItem("lagcc:editorName", user.name);   // legacy mirror
+      } catch (e) {
+        // Storage blocked (private browsing, quota). The session still works
+        // for this tab; it just won't survive a reload.
+        console.error("saveUser", e);
+      }
+    }
+    function showLogin() {
+      document.getElementById("sessionPill").classList.remove("show");
+      document.getElementById("loginError").classList.remove("show");
+      const nameEl = document.getElementById("loginName");
+      const emailEl = document.getElementById("loginEmail");
+      // Carry over a name left by the old prompt-based flow, if there is one.
+      nameEl.value = (localStorage.getItem("lagcc:editorName") || "").trim();
+      emailEl.value = "";
+      document.getElementById("loginScreen").classList.add("show");
+      nameEl.focus();
+    }
+    function showSchedule() {
+      document.getElementById("loginScreen").classList.remove("show");
+      const pill = document.getElementById("sessionPill");
+      const nameEl = document.getElementById("sessionName");
+      nameEl.textContent = currentUser.name;
+      nameEl.title = currentUser.email || currentUser.name;
+      pill.classList.add("show");
+    }
+    function logout() {
+      try {
+        localStorage.removeItem(USER_KEY);
+        localStorage.removeItem("lagcc:editorName");
+      } catch (e) { console.error("logout", e); }
+      currentUser = null;
+      editLogOpen = false;
+      closeMenu();
+      showLogin();
+    }
+    function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
     function getEditorName() {
-      let name = (localStorage.getItem("lagcc:editorName") || "").trim();
-      if (!name) {
-        name = ((window.prompt("Your name, so others can see who made changes:") || "").trim()) || "Someone";
-        localStorage.setItem("lagcc:editorName", name);
-        updateEditorLabel();
-      }
-      return name;
-    }
-    function promptEditorName() {
-      const current = localStorage.getItem("lagcc:editorName") || "";
-      const name = (window.prompt("Your name:", current) || "").trim();
-      if (name) {
-        localStorage.setItem("lagcc:editorName", name);
-        updateEditorLabel();
-      }
-    }
-    function updateEditorLabel() {
-      const label = document.getElementById("editorLabel");
-      const btn = document.getElementById("changeEditorBtn");
-      const name = localStorage.getItem("lagcc:editorName");
-      if (label) label.textContent = name ? `Editing as ${name}` : "Name not set";
-      if (btn) btn.textContent = name ? "change" : "set name";
+      return (currentUser && currentUser.name) || "Someone";
     }
     function logEdit(day, action) {
       const entry = { name: getEditorName(), action, at: Date.now() };
+      if (currentUser && currentUser.email) entry.email = currentUser.email;
       day.edits = [entry].concat(Array.isArray(day.edits) ? day.edits : []).slice(0, 8);
     }
     function relTime(ts) {
@@ -980,6 +1158,7 @@
       const makeRow = e => {
         const row = document.createElement("div");
         row.className = "edit-log-row";
+        row.title = e.email ? `${e.name} · ${e.email}` : e.name;
 
         const what = document.createElement("div");
         const who = document.createElement("span");
@@ -1909,14 +2088,29 @@
       }
     });
 
-    document.getElementById("changeEditorBtn").addEventListener("click", promptEditorName);
+    document.getElementById("loginForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const name = document.getElementById("loginName").value.trim();
+      const email = document.getElementById("loginEmail").value.trim();
+      const err = document.getElementById("loginError");
+      const reject = msg => { err.textContent = msg; err.classList.add("show"); };
+      if (!name) return reject("Enter your name.");
+      if (!email) return reject("Enter your email.");
+      if (!validEmail(email)) return reject("That email doesn't look right.");
+      err.classList.remove("show");
+      saveUser({ name, email });
+      showSchedule();
+      render();
+    });
+    document.getElementById("logoutBtn").addEventListener("click", logout);
 
     // ---------- Start ----------
     dateInput.value = ymd(new Date());
     recurringRules = loadLocalRecurring();
     setCloud(false);
     document.getElementById("syncText").textContent = "Connecting…";
-    updateEditorLabel();
+    currentUser = loadUser();
+    if (currentUser) showSchedule(); else showLogin();
     render();
     initFirebase();
   </script>
