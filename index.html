@@ -88,23 +88,61 @@
       cursor: pointer;
     }
     .link-btn:hover { background: transparent; color: var(--text); }
-    /* "Last edited" panel — pinned to the top-right of the page on wide
-       screens, dropped back into the flow under the legend when narrow. */
+    /* "Last edited" — a single collapsed button pinned to the top-right of the
+       page; clicking it drops down the full edit history for the day. Returns
+       to the centred flow position under the legend on narrow screens. */
     .edit-log {
       display: none;
       position: absolute;
       top: 28px;
       right: 40px;
-      width: 272px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 11px 13px 9px;
-      box-shadow: 0 2px 10px rgba(75,53,40,.07);
       text-align: left;
       z-index: 30;
     }
     .edit-log.show { display: block; }
+    .edit-log-btn {
+      height: auto;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      max-width: 290px;
+      padding: 7px 11px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      box-shadow: 0 1px 4px rgba(75,53,40,.06);
+      color: var(--muted);
+      font-size: 11.5px;
+      font-weight: 650;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .edit-log-btn:hover { background: #f9f5ed; }
+    .edit-log-btn .label { overflow: hidden; text-overflow: ellipsis; }
+    .edit-log-btn .label b { font-weight: 750; color: var(--text); }
+    .edit-log-btn .chev {
+      font-size: 9px;
+      line-height: 1;
+      color: var(--muted);
+      transition: transform .15s ease;
+    }
+    .edit-log.open .edit-log-btn .chev { transform: rotate(180deg); }
+    .edit-log-list {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 292px;
+      max-height: calc(100vh - 190px);
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 8px 22px rgba(75,53,40,.15);
+      padding: 11px 13px;
+      z-index: 41;
+    }
+    .edit-log.open .edit-log-list { display: block; }
     .edit-log-title {
       font-size: 10.5px;
       font-weight: 750;
@@ -113,26 +151,6 @@
       color: var(--muted);
       margin-bottom: 8px;
     }
-    /* Expanded, the panel is allowed to overlay the grid below it rather than
-       hiding the extra rows inside a scroll box you can't see the edge of. */
-    .edit-log-list.expanded {
-      max-height: calc(100vh - 170px);
-      overflow-y: auto;
-    }
-    .edit-log-more {
-      height: auto;
-      border: 0;
-      background: transparent;
-      padding: 0;
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 650;
-      text-decoration: underline;
-      text-underline-offset: 2px;
-      cursor: pointer;
-    }
-    .edit-log-more:hover { background: transparent; color: var(--text); }
     .edit-log-row {
       padding: 7px 0;
       border-top: 1px solid #eee6dc;
@@ -140,7 +158,7 @@
       line-height: 1.35;
       color: var(--text);
     }
-    .edit-log-row:first-child { border-top: 0; padding-top: 0; }
+    .edit-log-row:first-of-type { border-top: 0; padding-top: 0; }
     .edit-log-who { font-weight: 750; }
     .edit-log-when {
       color: var(--muted);
@@ -149,11 +167,14 @@
     }
     @media (max-width: 1180px) {
       .edit-log {
-        position: static;
-        width: auto;
-        max-width: 420px;
-        margin: 0 auto 18px;
+        position: relative;
+        top: auto;
+        right: auto;
+        margin: 0 0 18px;
+        display: none;
       }
+      .edit-log.show { display: flex; justify-content: center; }
+      .edit-log-list { left: 50%; right: auto; transform: translateX(-50%); }
     }
     .legend {
       display: flex;
@@ -763,6 +784,7 @@
     let dragState = null;          // drag-to-create: {col, ghost, hint, court, anchor, start, duration, dragging}
     let resizeState = null;        // drag-to-extend: {col, court, block, el, rangeEl, occupied, newDur}
     let suppressClicksUntil = 0;   // swallow the click event that follows a drag release
+    let editLogOpen = false;       // "Last edited" dropdown; survives re-renders
 
     const dateInput = document.getElementById("dateInput");
     const longDate = document.getElementById("longDate");
@@ -931,11 +953,29 @@
       log.innerHTML = "";
       if (!edits.length) { log.classList.remove("show"); return; }
       log.classList.add("show");
+      log.classList.toggle("open", editLogOpen);
 
-      const title = document.createElement("div");
-      title.className = "edit-log-title";
-      title.textContent = "Last edited";
-      log.appendChild(title);
+      // Collapsed state: one button summarising the most recent edit.
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "edit-log-btn";
+      btn.setAttribute("aria-expanded", String(editLogOpen));
+      const label = document.createElement("span");
+      label.className = "label";
+      label.innerHTML = "Last edited by <b></b> · ";
+      label.querySelector("b").textContent = edits[0].name;
+      label.appendChild(document.createTextNode(relTime(edits[0].at)));
+      btn.appendChild(label);
+      const chev = document.createElement("span");
+      chev.className = "chev";
+      chev.textContent = "▼";
+      btn.appendChild(chev);
+      btn.addEventListener("click", () => {
+        editLogOpen = !editLogOpen;
+        log.classList.toggle("open", editLogOpen);
+        btn.setAttribute("aria-expanded", String(editLogOpen));
+      });
+      log.appendChild(btn);
 
       const makeRow = e => {
         const row = document.createElement("div");
@@ -956,29 +996,15 @@
         return row;
       };
 
-      // Show the four most recent edits; the rest sit behind a toggle so the
-      // panel never grows into the schedule grid.
-      const COLLAPSED = 4;
+      // Opened state: every edit recorded against the day being viewed.
       const list = document.createElement("div");
       list.className = "edit-log-list";
-      const draw = expanded => {
-        list.innerHTML = "";
-        list.classList.toggle("expanded", expanded);
-        (expanded ? edits : edits.slice(0, COLLAPSED)).forEach(e => list.appendChild(makeRow(e)));
-      };
-      draw(false);
+      const title = document.createElement("div");
+      title.className = "edit-log-title";
+      title.textContent = edits.length === 1 ? "1 edit this day" : `${edits.length} edits this day`;
+      list.appendChild(title);
+      edits.forEach(e => list.appendChild(makeRow(e)));
       log.appendChild(list);
-
-      if (edits.length > COLLAPSED) {
-        const more = document.createElement("button");
-        more.type = "button";
-        more.className = "edit-log-more";
-        let expanded = false;
-        const sync = () => { more.textContent = expanded ? "Show less" : `Show ${edits.length - COLLAPSED} earlier`; };
-        sync();
-        more.addEventListener("click", () => { expanded = !expanded; draw(expanded); sync(); });
-        log.appendChild(more);
-      }
     }
 
     // ---------- Data access ----------
@@ -1809,6 +1835,19 @@
     document.addEventListener("click", e => {
       if (Date.now() < suppressClicksUntil) return;
       if (menu.classList.contains("show") && !menu.contains(e.target)) closeMenu();
+      const log = document.getElementById("editLog");
+      if (editLogOpen && !log.contains(e.target)) {
+        editLogOpen = false;
+        log.classList.remove("open");
+        const btn = log.querySelector(".edit-log-btn");
+        if (btn) btn.setAttribute("aria-expanded", "false");
+      }
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && editLogOpen) {
+        editLogOpen = false;
+        document.getElementById("editLog").classList.remove("open");
+      }
     });
 
     // Drag-to-create (empty grid) and drag-to-extend (booking bottom edge)
