@@ -13,6 +13,7 @@
       --border: #cdbfae;
       --booked: #6f8065;
       --cancelled: #b85c54;
+      --custom: #a32e24;
       --open: #f7edc9;
       --line: #d9c99c;
     }
@@ -27,6 +28,7 @@
       max-width: 1280px;
       margin: 0 auto;
       padding: 80px 40px 52px;
+      position: relative;
     }
     h1 {
       margin: 0;
@@ -86,45 +88,73 @@
       cursor: pointer;
     }
     .link-btn:hover { background: transparent; color: var(--text); }
+    /* "Last edited" panel — pinned to the top-right of the page on wide
+       screens, dropped back into the flow under the legend when narrow. */
     .edit-log {
       display: none;
-      justify-content: center;
-      position: relative;
-      margin: 0 0 18px;
-    }
-    .edit-log.show { display: flex; }
-    .edit-log-summary {
-      font-size: 12px;
-      color: var(--muted);
-      cursor: pointer;
-      text-decoration: underline dotted;
-      text-underline-offset: 3px;
-    }
-    .edit-log-summary:hover { color: var(--text); }
-    .edit-log-list {
-      display: none;
       position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      margin-top: 8px;
+      top: 28px;
+      right: 40px;
+      width: 272px;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      box-shadow: 0 8px 20px rgba(75,53,40,.14);
-      padding: 8px;
-      font-size: 12px;
-      min-width: 260px;
-      max-width: 360px;
-      z-index: 40;
+      border-radius: 10px;
+      padding: 11px 13px 9px;
+      box-shadow: 0 2px 10px rgba(75,53,40,.07);
+      text-align: left;
+      z-index: 30;
     }
-    .edit-log-list.show { display: block; }
+    .edit-log.show { display: block; }
+    .edit-log-title {
+      font-size: 10.5px;
+      font-weight: 750;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    /* Expanded, the panel is allowed to overlay the grid below it rather than
+       hiding the extra rows inside a scroll box you can't see the edge of. */
+    .edit-log-list.expanded {
+      max-height: calc(100vh - 170px);
+      overflow-y: auto;
+    }
+    .edit-log-more {
+      height: auto;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+    .edit-log-more:hover { background: transparent; color: var(--text); }
     .edit-log-row {
-      padding: 5px 6px;
+      padding: 7px 0;
+      border-top: 1px solid #eee6dc;
+      font-size: 12px;
+      line-height: 1.35;
       color: var(--text);
-      border-bottom: 1px solid #eee6dc;
     }
-    .edit-log-row:last-child { border-bottom: 0; }
+    .edit-log-row:first-child { border-top: 0; padding-top: 0; }
+    .edit-log-who { font-weight: 750; }
+    .edit-log-when {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    @media (max-width: 1180px) {
+      .edit-log {
+        position: static;
+        width: auto;
+        max-width: 420px;
+        margin: 0 auto 18px;
+      }
+    }
     .legend {
       display: flex;
       align-items: center;
@@ -416,9 +446,9 @@
       font-weight: 700;
     }
     .coaches-grid button.custom-coach-btn {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px dashed var(--border);
+      background: var(--custom);
+      color: #fff;
+      border: 1px solid var(--custom);
     }
     .custom-coach-row {
       display: none;
@@ -437,6 +467,10 @@
     }
     .custom-coach-row button {
       padding: 0 14px;
+      background: var(--custom);
+      border-color: var(--custom);
+      color: #fff;
+      font-weight: 700;
     }
     .coach-edit-row { margin: 0 2px 6px; }
     .duration-buttons {
@@ -466,19 +500,26 @@
     .booking-summary .who-row { display: flex; align-items: center; gap: 6px; }
     .booking-summary .who { font-weight: 750; }
     .booking-summary .when { color: var(--muted); font-size: 12px; margin-top: 3px; }
-    .edit-coach-btn {
+    /* Scoped to .booking-summary so it outranks `.menu button`, which would
+       otherwise stretch this icon button to the full menu width. */
+    .booking-summary .edit-coach-btn {
       height: 22px;
       width: 22px;
+      min-width: 0;
       border: 0;
       border-radius: 5px;
       background: transparent;
       color: var(--muted);
-      font-size: 13px;
       padding: 0;
       cursor: pointer;
-      flex-shrink: 0;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .12s ease, color .12s ease;
     }
-    .edit-coach-btn:hover { background: #eee6dc; color: var(--text); }
+    .booking-summary .edit-coach-btn svg { width: 13.5px; height: 13.5px; display: block; }
+    .booking-summary .edit-coach-btn:hover { background: #eee6dc; color: var(--text); }
 
     .modal-backdrop {
       display: none;
@@ -707,6 +748,8 @@
     const SNAP = 15;             // minutes
     const COURTS = ["4", "5", "6"];
     const COACHES = { Anjali: "#3D5A6D", Alena: "#6D4C5C", Lou: "#3D4F40", Byron: "#2F1F0F", Jack: "#3A3F47" };
+    // Colour for bookings made under a typed-in ("Custom") name. Mirrors --custom.
+    const CUSTOM_COLOR = "#a32e24";
     const DURATIONS = [30, 45, 60];
 
     // ---------- State ----------
@@ -873,6 +916,14 @@
       if (diff < 86400000) return Math.round(diff / 3600000) + "h ago";
       return Math.round(diff / 86400000) + "d ago";
     }
+    // Clock time for an edit — includes the date when it wasn't made today,
+    // since you can edit a future day's schedule.
+    function fmtWhen(ts) {
+      const d = new Date(ts);
+      const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      if (d.toDateString() === new Date().toDateString()) return time;
+      return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
+    }
     function renderEditLog() {
       const log = document.getElementById("editLog");
       const day = getDay(dateInput.value);
@@ -880,20 +931,54 @@
       log.innerHTML = "";
       if (!edits.length) { log.classList.remove("show"); return; }
       log.classList.add("show");
-      const summary = document.createElement("div");
-      summary.className = "edit-log-summary";
-      summary.textContent = `Last edited by ${edits[0].name} · ${relTime(edits[0].at)}`;
-      const list = document.createElement("div");
-      list.className = "edit-log-list";
-      edits.forEach(e => {
+
+      const title = document.createElement("div");
+      title.className = "edit-log-title";
+      title.textContent = "Last edited";
+      log.appendChild(title);
+
+      const makeRow = e => {
         const row = document.createElement("div");
         row.className = "edit-log-row";
-        row.textContent = `${e.name} · ${relTime(e.at)} — ${e.action}`;
-        list.appendChild(row);
-      });
-      summary.addEventListener("click", () => list.classList.toggle("show"));
-      log.appendChild(summary);
+
+        const what = document.createElement("div");
+        const who = document.createElement("span");
+        who.className = "edit-log-who";
+        who.textContent = e.name;
+        what.appendChild(who);
+        what.appendChild(document.createTextNode(" — " + e.action));
+        row.appendChild(what);
+
+        const when = document.createElement("div");
+        when.className = "edit-log-when";
+        when.textContent = `${fmtWhen(e.at)} · ${relTime(e.at)}`;
+        row.appendChild(when);
+        return row;
+      };
+
+      // Show the four most recent edits; the rest sit behind a toggle so the
+      // panel never grows into the schedule grid.
+      const COLLAPSED = 4;
+      const list = document.createElement("div");
+      list.className = "edit-log-list";
+      const draw = expanded => {
+        list.innerHTML = "";
+        list.classList.toggle("expanded", expanded);
+        (expanded ? edits : edits.slice(0, COLLAPSED)).forEach(e => list.appendChild(makeRow(e)));
+      };
+      draw(false);
       log.appendChild(list);
+
+      if (edits.length > COLLAPSED) {
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "edit-log-more";
+        let expanded = false;
+        const sync = () => { more.textContent = expanded ? "Show less" : `Show ${edits.length - COLLAPSED} earlier`; };
+        sync();
+        more.addEventListener("click", () => { expanded = !expanded; draw(expanded); sync(); });
+        log.appendChild(more);
+      }
     }
 
     // ---------- Data access ----------
@@ -1147,6 +1232,7 @@
       const isCancelled = b.status === "cancelled" || b.status === "skip";
       if (isCancelled) el.classList.add("cancelled");
       else if (COACHES[b.coach]) el.style.background = COACHES[b.coach];
+      else el.style.background = CUSTOM_COLOR;
       if (b.duration < 30) el.classList.add("short");
 
       const laneW = 100 / (b._lanes || 1);
@@ -1322,7 +1408,8 @@
         editBtn.type = "button";
         editBtn.className = "edit-coach-btn";
         editBtn.title = "Change coach";
-        editBtn.textContent = "✏️";
+        editBtn.setAttribute("aria-label", "Change coach");
+        editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 19.5h3.6L19.4 8.2a1.9 1.9 0 0 0 0-2.7l-.9-.9a1.9 1.9 0 0 0-2.7 0L4.5 15.9v3.6z"/><path d="M14.6 6.6l2.8 2.8"/></svg>';
         editBtn.addEventListener("click", () => {
           const row = document.getElementById("coachEditRow");
           row.style.display = row.style.display === "none" ? "block" : "none";
