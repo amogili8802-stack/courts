@@ -336,9 +336,10 @@
       flex-wrap: wrap;
     }
     .legend-item { display: flex; align-items: center; gap: 8px; }
-    /* Sized in em so it tracks the legend's own text, which is a step smaller
-       on phones. line-height keeps the taller glyph from stretching the line. */
-    .drag-arrow { font-size: 1.25em; line-height: 1; vertical-align: -0.06em; }
+    /* Height is the cap height of the text beside it, and an inline SVG sits on
+       the baseline, so the arrow starts and ends exactly where the capital next
+       to it does. In em, so it follows the legend's size down on phones. */
+    .drag-arrow { height: .705em; width: .3525em; vertical-align: baseline; }
     .swatch {
       width: 14px; height: 14px;
       border-radius: 4px;
@@ -906,11 +907,12 @@
 
     <div class="legend" id="legend">
       <div class="legend-item"><span class="swatch open"></span>Open — click to book the hour</div>
-      <!-- The arrow carries U+FE0E after it. U+2195 has an emoji form, and iOS
-           picks that by default, so the phone drew a fat colour glyph where the
-           laptop drew a plain arrow. The selector pins it to the text one; it is
-           invisible in the source but load-bearing, so don't strip it. -->
-      <div class="legend-item legend-drag"><span><span class="drag-arrow">↕︎</span> <span class="hover-only">Hold + drag</span><span class="touch-only">Press and hold, then drag</span> for 15 / 30 / 45 min lessons</span></div>
+      <!-- Drawn rather than typed. U+2195 isn't in Inter, so the glyph came from
+           whichever installed font had one — a different font per device, each
+           sitting at its own height against the text, and on iOS the colour
+           emoji. A path is the same everywhere and can be set to the exact
+           height of the capital beside it. -->
+      <div class="legend-item legend-drag"><span><svg class="drag-arrow" viewBox="0 0 10 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 1.1V18.9"/><path d="M1.9 4.6L5 1.1l3.1 3.5"/><path d="M1.9 15.4L5 18.9l3.1-3.5"/></svg> <span class="hover-only">Hold + drag</span><span class="touch-only">Press and hold, then drag</span> for 15 / 30 / 45 min lessons</span></div>
     </div>
 
     <div class="edit-log" id="editLog"></div>
