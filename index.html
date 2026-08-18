@@ -1643,8 +1643,13 @@
         pin.className = "pin";
         pin.textContent = "📌";
         el.appendChild(pin);
-        el.addEventListener("mouseenter", e => showNoteBubble(b.note, el));
-        el.addEventListener("mouseleave", hideNoteBubble);
+        // Hover-only. A tap on a touchscreen fires the emulated mouseenter
+        // but never a mouseleave, so the bubble would sit there permanently.
+        // Touch users read the note in the booking menu instead.
+        if (window.matchMedia("(hover: hover)").matches) {
+          el.addEventListener("mouseenter", () => showNoteBubble(b.note, el));
+          el.addEventListener("mouseleave", hideNoteBubble);
+        }
       }
       if (activeCtx && activeCtx.mode === "edit" && activeCtx.bookingId === b.id && activeCtx.court === court) {
         el.classList.add("active");
@@ -1829,6 +1834,7 @@
       commitNote();
       activeCtx = null;
       menu.classList.remove("show");
+      hideNoteBubble();
       render();
     }
 
@@ -2415,6 +2421,10 @@
       document.getElementById("loginPhone").focus();
     });
     document.getElementById("logoutBtn").addEventListener("click", logout);
+
+    // The bubble is position:fixed against a block that scrolls away, so drop
+    // it rather than let it float over unrelated rows.
+    window.addEventListener("scroll", hideNoteBubble, { passive: true, capture: true });
 
     // Rotating a phone or resizing a window changes the row height; re-render
     // only when it actually crosses the threshold, not on every resize event.
