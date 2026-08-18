@@ -1293,13 +1293,16 @@
       if (diff < 86400000) return Math.round(diff / 3600000) + "h ago";
       return Math.round(diff / 86400000) + "d ago";
     }
-    // Clock time for an edit — includes the date when it wasn't made today,
-    // since you can edit a future day's schedule.
-    function fmtWhen(ts) {
+    // When an edit was made, judged against the day you're looking at rather
+    // than against today. Booking Tuesday's court on Monday files the entry
+    // under Tuesday, so a bare "4:32 PM" there would read as Tuesday at 4:32.
+    // Name the day whenever it differs from the one on screen.
+    function fmtWhen(ts, viewedDate) {
       const d = new Date(ts);
       const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-      if (d.toDateString() === new Date().toDateString()) return time;
-      return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
+      if (ymd(d) === viewedDate) return time;
+      const day = d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+      return `${day}, ${time}`;
     }
     function renderEditLog() {
       const log = document.getElementById("editLog");
@@ -1347,7 +1350,7 @@
 
         const when = document.createElement("div");
         when.className = "edit-log-when";
-        when.textContent = `${fmtWhen(e.at)} · ${relTime(e.at)}`;
+        when.textContent = `${fmtWhen(e.at, dateInput.value)} · ${relTime(e.at)}`;
         row.appendChild(when);
         return row;
       };
