@@ -769,8 +769,13 @@
 
     /* ---------- phones ---------- */
     @media (max-width: 720px) {
-      .page { padding: 22px 10px 40px; }
-      h1 { font-size: 26px; }
+      .page { padding: 14px 10px 36px; }
+      h1 { font-size: 23px; }
+      .toolbar { margin-top: 14px; gap: 9px; }
+      .long-date { font-size: 15px; }
+      .sync-status { font-size: 11px; }
+      .session-pill { margin-bottom: 10px; }
+      .edit-log { margin-bottom: 10px; }
 
       /* The grid was pinned at min-width 620px, so a phone showed a
          sideways-scrolling slice of it. Let it fit the viewport instead. */
@@ -778,7 +783,7 @@
         grid-template-columns: 44px repeat(3, 1fr);
         min-width: 0;
       }
-      .grid-head > div { height: 38px; font-size: 12px; padding: 0 3px; }
+      .grid-head > div { height: 34px; font-size: 11.5px; padding: 0 3px; }
       .time-label { font-size: 9.5px; }
 
       /* Columns are too narrow for name and time side by side — stack them. */
@@ -795,9 +800,10 @@
       .block.short {
         flex-direction: row;
         align-items: center;
+        justify-content: flex-start;   /* match the left edge of hour blocks */
         gap: 4px;
-        font-size: 9px;
-        padding: 0 4px;
+        font-size: 10.5px;
+        padding: 0 5px;
       }
       .block.short .range { display: none; }
 
@@ -805,7 +811,7 @@
       button, .date-input { height: 44px; padding: 0 10px; }
       .date-input { width: 132px; padding: 0 8px; font-size: 14px; }
 
-      .legend { flex-direction: column; gap: 6px; font-size: 13px; margin: 14px 0; }
+      .legend { flex-direction: column; gap: 5px; font-size: 12.5px; margin: 10px 0; }
       .legend-drag { display: none; }   /* drag-to-create is mouse-only */
 
       /* A 300px card anchored to a tap lands half off-screen on a phone, so
@@ -1026,7 +1032,7 @@
     const DAY_END = 21 * 60;     // 9:00 PM
     // Rows are shorter on phones so more of the day fits without scrolling.
     function isPhone() { return window.innerWidth <= 720; }
-    function rowHeight() { return isPhone() ? 50 : 64; }
+    function rowHeight() { return isPhone() ? 43 : 64; }
     let PX_PER_HOUR = rowHeight();
     const SNAP = 15;             // minutes
     const COURTS = ["4", "5", "6"];
@@ -1618,7 +1624,7 @@
       if (isCancelled) el.classList.add("cancelled");
       else if (COACHES[b.coach]) el.style.background = COACHES[b.coach];
       else el.style.background = CUSTOM_COLOR;
-      if (b.duration < 30) el.classList.add("short");
+      if (b.duration < (isPhone() ? 60 : 30)) el.classList.add("short");
 
       const laneW = 100 / (b._lanes || 1);
       el.style.left = `calc(${b._lane * laneW}% + 4px)`;
