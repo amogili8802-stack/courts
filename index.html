@@ -753,9 +753,85 @@
     .modal-actions .primary { background: #38271f; color: #fff; }
     .modal-actions .primary:hover { background: #2d1f18; }
 
+    /* ---------- tablets / narrow windows ----------
+       Wide enough for the desktop layout, but the columns are too tight to
+       fit a coach's name and the time on one line. Stack just those. */
+    @media (min-width: 721px) and (max-width: 900px) {
+      .block {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 0;
+      }
+      .block .range { font-size: 10px; }
+      .block.short { flex-direction: row; align-items: center; gap: 4px; }
+    }
+
+    /* ---------- phones ---------- */
     @media (max-width: 720px) {
-      .page { padding: 24px 12px 40px; }
-      h1 { font-size: 28px; }
+      .page { padding: 22px 10px 40px; }
+      h1 { font-size: 26px; }
+
+      /* The grid was pinned at min-width 620px, so a phone showed a
+         sideways-scrolling slice of it. Let it fit the viewport instead. */
+      .grid-head, .grid-body {
+        grid-template-columns: 44px repeat(3, 1fr);
+        min-width: 0;
+      }
+      .grid-head > div { height: 38px; font-size: 12px; padding: 0 3px; }
+      .time-label { font-size: 9.5px; }
+
+      /* Columns are too narrow for name and time side by side — stack them. */
+      .block {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 0;
+        padding: 2px 6px;
+        font-size: 11.5px;
+        border-radius: 6px;
+      }
+      .block .range { font-size: 9.5px; }
+      .block.short {
+        flex-direction: row;
+        align-items: center;
+        gap: 4px;
+        font-size: 9px;
+        padding: 0 4px;
+      }
+      .block.short .range { display: none; }
+
+      .controls { flex-wrap: wrap; justify-content: center; gap: 8px; }
+      button, .date-input { height: 44px; padding: 0 10px; }
+      .date-input { width: 132px; padding: 0 8px; font-size: 14px; }
+
+      .legend { flex-direction: column; gap: 6px; font-size: 13px; margin: 14px 0; }
+      .legend-drag { display: none; }   /* drag-to-create is mouse-only */
+
+      /* A 300px card anchored to a tap lands half off-screen on a phone, so
+         dock it to the bottom. !important beats positionMenu's inline
+         left/top, which linger if the window was wider earlier. */
+      .menu {
+        left: 8px !important;
+        right: 8px;
+        top: auto !important;
+        bottom: 8px;
+        width: auto;
+        max-height: 78vh;
+        border-radius: 14px;
+        padding: 12px;
+      }
+      .coaches-grid button { height: 42px; }
+      .duration-buttons button { height: 40px; }
+      .custom-coach-row input, .custom-coach-row button { height: 40px; }
+    }
+
+    /* ---------- small phones ---------- */
+    @media (max-width: 380px) {
+      .grid-head, .grid-body { grid-template-columns: 38px repeat(3, 1fr); }
+      .grid-head > div { font-size: 11px; }
+      .block { font-size: 10.5px; padding: 2px 4px; }
+      .block .range { font-size: 9px; }
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -786,7 +862,7 @@
 
     <div class="legend" id="legend">
       <div class="legend-item"><span class="swatch open"></span>Open — click to book the hour</div>
-      <div class="legend-item">↕ Hold + drag for 15 / 30 / 45 min lessons</div>
+      <div class="legend-item legend-drag">↕ Hold + drag for 15 / 30 / 45 min lessons</div>
     </div>
 
     <div class="edit-log" id="editLog"></div>
@@ -948,7 +1024,10 @@
 
     const DAY_START = 6 * 60;    // 6:00 AM
     const DAY_END = 21 * 60;     // 9:00 PM
-    const PX_PER_HOUR = 64;
+    // Rows are shorter on phones so more of the day fits without scrolling.
+    function isPhone() { return window.innerWidth <= 720; }
+    function rowHeight() { return isPhone() ? 50 : 64; }
+    let PX_PER_HOUR = rowHeight();
     const SNAP = 15;             // minutes
     const COURTS = ["4", "5", "6"];
     const COACHES = { Anjali: "#3D5A6D", Alena: "#6D4C5C", Lou: "#3D4F40", Byron: "#2F1F0F", Jack: "#3A3F47" };
@@ -1549,7 +1628,9 @@
       el.appendChild(name);
       const range = document.createElement("span");
       range.className = "range";
-      range.textContent = fmtRange(b.start, b.duration);
+      // "9:00 AM-10:00 AM" overflows a phone-width column; the block's height
+      // already shows how long it runs, so the start time is enough there.
+      range.textContent = isPhone() ? fmtMin(b.start) : fmtRange(b.start, b.duration);
       el.appendChild(range);
       if (b.virtual || (b.ruleId && b.status === "skip")) {
         const rec = document.createElement("span");
@@ -1639,6 +1720,9 @@
 
     function positionMenu(x, y) {
       menu.classList.add("show");
+      // On phones the stylesheet docks the menu to the bottom of the screen,
+      // so there's no tap-anchored position to compute.
+      if (window.matchMedia("(max-width: 720px)").matches) return;
       const mw = menu.offsetWidth, mh = menu.offsetHeight;
       let left = x + 14, top = y;
       if (left + mw > window.innerWidth - 8) left = x - mw - 14;
@@ -2331,6 +2415,13 @@
       document.getElementById("loginPhone").focus();
     });
     document.getElementById("logoutBtn").addEventListener("click", logout);
+
+    // Rotating a phone or resizing a window changes the row height; re-render
+    // only when it actually crosses the threshold, not on every resize event.
+    window.addEventListener("resize", () => {
+      const h = rowHeight();
+      if (h !== PX_PER_HOUR) { PX_PER_HOUR = h; render(); }
+    });
 
     // ---------- Start ----------
     dateInput.value = ymd(new Date());
