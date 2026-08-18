@@ -2323,15 +2323,18 @@
       setCloud(false);
     }
 
-    // Signing in lasts until someone presses Log out. Two answers end a
-    // session and nothing else does: the allow-list was read and this number
-    // isn't on it, or the rules refused the read outright. A read that simply
-    // didn't complete — phone still waking up, tab reloaded before the
-    // network was back — means the check hasn't happened yet, so it gets
-    // retried rather than treated as a refusal.
-    function isDenial(err) {
-      return Boolean(err) && err.code === "permission-denied";
-    }
+    // Signing in lasts until someone presses Log out. One thing ends a session
+    // on its own — the server answered that this number has no allow-list
+    // entry, which is how removing a coach takes effect — and nothing else
+    // does.
+    //
+    // permission-denied used to count as a second answer. It shouldn't: the
+    // rule for reading your own entry needs request.auth, so a read issued
+    // before the ID token has been refreshed is refused in exactly the same
+    // words as one from a number that was taken off the list. A phone opened
+    // after a few days does precisely that, and the session ended on a message
+    // saying access had been lost. It's retried now like any other read that
+    // didn't answer.
 
     let authGeneration = 0;      // results from a superseded sign-in are dropped
     let pendingRecheck = false;  // a check that couldn't finish, waiting to retry
@@ -2376,25 +2379,34 @@
         startCloud();
         render();
       }
-      let entry = null;
+      let doc = null;
       try {
-        const doc = await db.collection(ALLOWED).doc(phone).get();
-        entry = doc.exists ? (doc.data() || {}) : null;
+        // Refreshes the stored token if it has expired, so the read isn't
+        // racing the SDK for one and being refused for arriving first.
+        await user.getIdToken();
+        doc = await db.collection(ALLOWED).doc(phone).get();
       } catch (e) {
         console.error("allow-list check", e);
         if (gen !== authGeneration) return;
-        if (!isDenial(e)) {
-          // Couldn't reach the list. The session stays exactly as it was.
-          if (!currentUser) {
-            showLogin();
-            loginError("Couldn't reach the schedule just now. You're still signed in — this keeps retrying on its own. Sign in again below if you'd rather not wait.");
-          }
-          queueRecheck();
-          return;
+        // Couldn't reach the list, or was refused before the token was ready.
+        // Either way the question is unanswered; the session stays as it was.
+        if (!currentUser) {
+          showLogin();
+          loginError("Couldn't reach the schedule just now. You're still signed in — this keeps retrying on its own. Sign in again below if you'd rather not wait.");
         }
+        queueRecheck();
+        return;
       }
       if (gen !== authGeneration) return;
+      // "No entry" out of the offline cache means only that the device never
+      // fetched one — the same answer it would give for a number that was
+      // never on the list. Only the server's word can end a session.
+      if (!doc.exists && doc.metadata.fromCache) {
+        queueRecheck();
+        return;
+      }
       recheckAttempts = 0;
+      const entry = doc.exists ? (doc.data() || {}) : null;
       if (!entry) {
         forgetRememberedUser();
         currentUser = null;
