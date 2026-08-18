@@ -388,6 +388,12 @@
       border-right: 1px solid var(--line);
       background: var(--open);
       cursor: pointer;
+      /* Holding a finger down is the drag gesture here, and it's also what iOS
+         reads as "select this" — without these the magnifier and the callout
+         menu come up on top of the drag. */
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
     .court-col:last-child { border-right: 0; }
     .gridline {
@@ -444,6 +450,16 @@
       height: 10px;
       cursor: ns-resize;
       touch-action: none;
+    }
+    .touch-only { display: none; }
+    /* Touch. The resize handle can't take much from inside a block without
+       eating the tap that opens it, so it hangs further below instead, into
+       empty grid. An adjacent block paints over that overhang and keeps its
+       own edge, so this only claims space nothing else wanted. */
+    @media (hover: none) {
+      .block .resizer { bottom: -10px; height: 16px; }
+      .hover-only { display: none; }
+      .touch-only { display: inline; }
     }
     .ghost {
       position: absolute;
@@ -806,7 +822,6 @@
       .date-input { width: 132px; padding: 0 8px; font-size: 14px; }
 
       .legend { flex-direction: column; gap: 6px; font-size: 13px; margin: 14px 0; }
-      .legend-drag { display: none; }   /* drag-to-create is mouse-only */
 
       /* A 300px card anchored to a tap lands half off-screen on a phone, so
          dock it to the bottom. !important beats positionMenu's inline
@@ -862,7 +877,7 @@
 
     <div class="legend" id="legend">
       <div class="legend-item"><span class="swatch open"></span>Open — click to book the hour</div>
-      <div class="legend-item legend-drag">↕ Hold + drag for 15 / 30 / 45 min lessons</div>
+      <div class="legend-item legend-drag"><span>↕ <span class="hover-only">Hold + drag</span><span class="touch-only">Press and hold, then drag</span> for 15 / 30 / 45 min lessons</span></div>
     </div>
 
     <div class="edit-log" id="editLog"></div>
@@ -1027,6 +1042,10 @@
     // Rows are shorter on phones so more of the day fits without scrolling.
     function isPhone() { return window.innerWidth <= 720; }
     function rowHeight() { return isPhone() ? 50 : 64; }
+    // Mouse and finger want different gestures, and what separates them is
+    // whether the device can hover — not how wide it is. A tablet with a mouse
+    // attached gets the mouse behaviour; a narrow touchscreen laptop doesn't.
+    function canHover() { return window.matchMedia("(hover: hover)").matches; }
     let PX_PER_HOUR = rowHeight();
     const SNAP = 15;             // minutes
     const COURTS = ["4", "5", "6"];
@@ -1048,6 +1067,7 @@
     let dragState = null;          // drag-to-create: {col, ghost, hint, court, anchor, start, duration, dragging}
     let resizeState = null;        // drag-to-extend: {col, court, block, el, rangeEl, occupied, newDur}
     let suppressClicksUntil = 0;   // swallow the click event that follows a drag release
+    let pendingHold = null;        // touch press-and-hold, before it becomes a drag
     let editLogOpen = false;       // "Last edited" dropdown; survives re-renders
 
     const dateInput = document.getElementById("dateInput");
@@ -1600,32 +1620,47 @@
           const span = clickSpan(court, minAtY(col, e.clientY));
           openNewMenu(court, span.start, e, span.duration);
         });
+        // A mouse can claim the gesture the moment it lands, because a press
+        // that turns out to be a click is caught by the 8px slop in pointermove.
+        // A finger can't: the same downward swipe is how you scroll the day. So
+        // touch arms a press-and-hold instead and only takes the gesture over
+        // once the finger has held still long enough to mean this spot.
         col.addEventListener("pointerdown", e => {
-          if (e.pointerType !== "mouse" || e.button !== 0) return;
+          if (e.button !== 0) return;
           if (e.target.closest(".block")) return;
           const anchor = Math.min(minAtY(col, e.clientY), DAY_END - SNAP);
-          dragState = { col, ghost, hint, court, anchor, anchorY: e.clientY, start: anchor, duration: 15, dragging: false };
+          const base = { col, ghost, hint, court, anchor, anchorY: e.clientY, start: anchor, duration: SNAP };
+          if (e.pointerType === "mouse") {
+            dragState = { ...base, dragging: false };
+          } else {
+            armHold({ ...base, anchorX: e.clientX });
+          }
         });
-        col.addEventListener("mousemove", e => {
-          if (dragState || resizeState || menu.classList.contains("show")) { hint.style.display = "none"; return; }
-          if (e.target.closest(".block")) {
+        // Hover-only. A tap fires an emulated mousemove but never a
+        // mouseleave, so on a touchscreen the hint would light up under the
+        // finger and stay there — including over the drag it just started.
+        if (canHover()) {
+          col.addEventListener("mousemove", e => {
+            if (dragState || resizeState || menu.classList.contains("show")) { hint.style.display = "none"; return; }
+            if (e.target.closest(".block")) {
+              hint.style.display = "none";
+              setOpenMarksVisibility(col, null);
+              return;
+            }
+            const span = clickSpan(court, minAtY(col, e.clientY));
+            hint.style.top = (yPos(span.start) + 2) + "px";
+            hint.style.height = (span.duration / 60 * PX_PER_HOUR - 4) + "px";
+            hint.textContent = "Book " + fmtRange(span.start, span.duration);
+            hint.style.display = "flex";
+            setOpenMarksVisibility(col, span.start, span.duration);
+          });
+          col.addEventListener("mouseleave", () => {
             hint.style.display = "none";
-            setOpenMarksVisibility(col, null);
-            return;
-          }
-          const span = clickSpan(court, minAtY(col, e.clientY));
-          hint.style.top = (yPos(span.start) + 2) + "px";
-          hint.style.height = (span.duration / 60 * PX_PER_HOUR - 4) + "px";
-          hint.textContent = "Book " + fmtRange(span.start, span.duration);
-          hint.style.display = "flex";
-          setOpenMarksVisibility(col, span.start, span.duration);
-        });
-        col.addEventListener("mouseleave", () => {
-          hint.style.display = "none";
-          if (!dragState && !(activeCtx && activeCtx.mode === "new" && activeCtx.court === court)) {
-            setOpenMarksVisibility(col, null);
-          }
-        });
+            if (!dragState && !(activeCtx && activeCtx.mode === "new" && activeCtx.court === court)) {
+              setOpenMarksVisibility(col, null);
+            }
+          });
+        }
 
         gridBody.appendChild(col);
       }
@@ -1682,7 +1717,10 @@
       if (!isCancelled) {
         const rz = document.createElement("div");
         rz.className = "resizer";
-        if (b.duration < 30) rz.style.height = "4px";
+        // Only mice get the shrunk handle on a 15-minute block; a finger needs
+        // the full strip, which the stylesheet hangs below the block rather
+        // than inside it.
+        if (b.duration < 30 && canHover()) rz.style.height = "4px";
         rz.addEventListener("pointerdown", e => {
           e.stopPropagation();
           e.preventDefault();
@@ -2456,8 +2494,58 @@
       }
     });
 
+    // ---------- Press and hold (touch) ----------
+    // HOLD_MS is the wait before a finger owns the gesture instead of the
+    // scroller. HOLD_SLOP is how far it may drift in that time and still count
+    // as held — under a fingertip's own wobble, but well under the distance a
+    // deliberate swipe covers, so a scroll gives itself away immediately.
+    const HOLD_MS = 400;
+    const HOLD_SLOP = 10;
+
+    function paintGhost(st) {
+      const g = st.ghost;
+      g.style.top = (yPos(st.start) + 2) + "px";
+      g.style.height = (st.duration / 60 * PX_PER_HOUR - 4) + "px";
+      g.textContent = fmtRange(st.start, st.duration);
+      g.style.display = "flex";
+      setOpenMarksVisibility(st.col, st.start, st.duration);
+    }
+
+    function armHold(state) {
+      cancelHold();
+      pendingHold = state;
+      state.timer = setTimeout(() => {
+        pendingHold = null;
+        dragState = { ...state, dragging: true, touch: true };
+        // Draw the starting slot the instant the hold lands. Without it a hold
+        // that hasn't moved yet looks identical to one the grid ignored, and
+        // people let go and try again.
+        dragState.hint.style.display = "none";
+        paintGhost(dragState);
+        if (navigator.vibrate) navigator.vibrate(12);
+      }, HOLD_MS);
+    }
+    function cancelHold() {
+      if (!pendingHold) return;
+      clearTimeout(pendingHold.timer);
+      pendingHold = null;
+    }
+
+    // touch-action can't be changed once a gesture is under way, so the scroll
+    // has to be refused move by move — which needs a non-passive listener, and
+    // works only because the hold means no scroll has begun yet.
+    gridBody.addEventListener("touchmove", e => {
+      if ((dragState && dragState.touch) || resizeState) e.preventDefault();
+    }, { passive: false });
+
     // Drag-to-create (empty grid) and drag-to-extend (booking bottom edge)
     document.addEventListener("pointermove", e => {
+      if (pendingHold) {
+        // Travelling before the hold completes means it was a scroll all along.
+        if (Math.abs(e.clientY - pendingHold.anchorY) > HOLD_SLOP ||
+            Math.abs(e.clientX - pendingHold.anchorX) > HOLD_SLOP) cancelHold();
+        return;
+      }
       if (dragState) {
         if (!dragState.dragging && Math.abs(e.clientY - dragState.anchorY) < 8) return;
         dragState.dragging = true;
@@ -2465,14 +2553,9 @@
         const s = Math.min(dragState.anchor, cur);
         const en = Math.min(DAY_END, Math.max(dragState.anchor, cur) + SNAP);
         dragState.start = s;
-        dragState.duration = Math.max(15, en - s);
+        dragState.duration = Math.max(SNAP, en - s);
         dragState.hint.style.display = "none";
-        const g = dragState.ghost;
-        g.style.top = (yPos(s) + 2) + "px";
-        g.style.height = (dragState.duration / 60 * PX_PER_HOUR - 4) + "px";
-        g.textContent = fmtRange(dragState.start, dragState.duration);
-        g.style.display = "flex";
-        setOpenMarksVisibility(dragState.col, s, dragState.duration);
+        paintGhost(dragState);
       } else if (resizeState) {
         const en = Math.min(DAY_END, minAtY(resizeState.col, e.clientY) + SNAP);
         let dur = Math.max(15, en - resizeState.block.start);
@@ -2484,6 +2567,7 @@
       }
     });
     document.addEventListener("pointerup", e => {
+      cancelHold();
       if (dragState) {
         const st = dragState;
         dragState = null;
@@ -2512,6 +2596,23 @@
         } else {
           render();
         }
+      }
+    });
+
+    // A touch the browser takes back — a scroll it decided to start after all,
+    // a call arriving, a second finger — fires pointercancel and never a
+    // pointerup, which would strand the ghost on screen and leave the grid
+    // convinced a drag was still running.
+    document.addEventListener("pointercancel", () => {
+      cancelHold();
+      if (dragState) {
+        dragState.ghost.style.display = "none";
+        setOpenMarksVisibility(dragState.col, null);
+        dragState = null;
+      }
+      if (resizeState) {
+        resizeState = null;
+        render();
       }
     });
 
