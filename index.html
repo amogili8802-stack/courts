@@ -903,7 +903,11 @@
 
     <div class="legend" id="legend">
       <div class="legend-item"><span class="swatch open"></span>Open — click to book the hour</div>
-      <div class="legend-item legend-drag"><span>↕ <span class="hover-only">Hold + drag</span><span class="touch-only">Press and hold, then drag</span> for 15 / 30 / 45 min lessons</span></div>
+      <!-- The arrow carries U+FE0E after it. U+2195 has an emoji form, and iOS
+           picks that by default, so the phone drew a fat colour glyph where the
+           laptop drew a plain arrow. The selector pins it to the text one; it is
+           invisible in the source but load-bearing, so don't strip it. -->
+      <div class="legend-item legend-drag"><span>↕︎ <span class="hover-only">Hold + drag</span><span class="touch-only">Press and hold, then drag</span> for 15 / 30 / 45 min lessons</span></div>
     </div>
 
     <div class="edit-log" id="editLog"></div>
