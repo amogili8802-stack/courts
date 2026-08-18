@@ -1177,6 +1177,28 @@
     let confirmationResult = null;   // pending SMS challenge
     let recaptcha = null;
 
+    // A verified allow-list entry, kept on the device. It exists so that a
+    // reload which can't reach Firestore — a phone waking up, Safari
+    // restoring a tab it discarded while you were elsewhere — has an answer
+    // and doesn't have to send someone back to the sign-in screen. It only
+    // decides what's on screen; the Firestore rules are still the real gate,
+    // so a stale copy can't buy access to anything. Logging out clears it.
+    const USER_KEY = "lagcc:user";
+    function loadRememberedUser(phone) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(USER_KEY) || "null");
+        if (!saved || saved.phone !== phone || typeof saved.name !== "string") return null;
+        return { name: saved.name, phone: saved.phone, last4: saved.last4 || phone.slice(-4) };
+      } catch (e) { return null; }
+    }
+    function rememberUser(user) {
+      try { localStorage.setItem(USER_KEY, JSON.stringify(user)); }
+      catch (e) { console.error("rememberUser", e); }
+    }
+    function forgetRememberedUser() {
+      try { localStorage.removeItem(USER_KEY); } catch (e) { console.error("forgetRememberedUser", e); }
+    }
+
     function setLoginBusy(busy, label) {
       const btn = document.getElementById("phoneNext");
       btn.disabled = busy;
@@ -1258,7 +1280,7 @@
           .forEach(k => localStorage.removeItem(k));
         localStorage.removeItem("lagcc:recurring");
         localStorage.removeItem("lagcc:editorName");
-        localStorage.removeItem("lagcc:user");
+        localStorage.removeItem(USER_KEY);
       } catch (e) { console.error("clearLocalSchedule", e); }
       dayCache = {};
       recurringRules = [];
@@ -2077,7 +2099,9 @@
       if (daySub) { daySub(); daySub = null; }
       if (!db) return;
       daySub = db.collection(SCHEDULES).doc(date).onSnapshot(snap => {
-        setCloud(true);
+        // A snapshot served out of the offline cache hasn't been near the
+        // server, so it mustn't light the pill up as synced.
+        setCloud(!snap.metadata.fromCache);
         dayCache[date] = normalizeDay(snap.data());
         saveLocalDay(date, dayCache[date]);
         if (dateInput.value === date) render();
@@ -2092,7 +2116,7 @@
     function startCloud() {
       if (!db || recurringSub) return;
       recurringSub = db.collection(RECURRING).onSnapshot(qs => {
-        setCloud(true);
+        setCloud(!qs.metadata.fromCache);
         recurringRules = qs.docs.filter(d => !d.id.startsWith("_")).map(d => d.data());
         saveLocalRecurring(recurringRules);
         render();
@@ -2108,7 +2132,43 @@
       setCloud(false);
     }
 
+    // Signing in lasts until someone presses Log out. Two answers end a
+    // session and nothing else does: the allow-list was read and this number
+    // isn't on it, or the rules refused the read outright. A read that simply
+    // didn't complete — phone still waking up, tab reloaded before the
+    // network was back — means the check hasn't happened yet, so it gets
+    // retried rather than treated as a refusal.
+    function isDenial(err) {
+      return Boolean(err) && err.code === "permission-denied";
+    }
+
+    let authGeneration = 0;      // results from a superseded sign-in are dropped
+    let pendingRecheck = false;  // a check that couldn't finish, waiting to retry
+    let recheckTimer = null;
+    let recheckAttempts = 0;
+
+    function clearRecheck() {
+      if (recheckTimer) { clearTimeout(recheckTimer); recheckTimer = null; }
+      pendingRecheck = false;
+    }
+    function queueRecheck() {
+      pendingRecheck = true;
+      recheckAttempts += 1;
+      // 2s, 4s, 8s… levelling off at half a minute, so a phone that stays
+      // offline for an hour isn't hammering the network the whole time.
+      const delay = Math.min(30000, 2000 * Math.pow(2, recheckAttempts - 1));
+      if (recheckTimer) clearTimeout(recheckTimer);
+      recheckTimer = setTimeout(runRecheck, delay);
+    }
+    function runRecheck() {
+      if (!pendingRecheck || !auth || !auth.currentUser) return;
+      clearRecheck();
+      handleAuthChange(auth.currentUser);
+    }
+
     async function handleAuthChange(user) {
+      const gen = ++authGeneration;
+      clearRecheck();
       if (!user) {
         currentUser = null;
         stopCloud();
@@ -2116,16 +2176,38 @@
         return;
       }
       const phone = user.phoneNumber || "";
+      // Anyone who has passed the check on this device goes straight back to
+      // the schedule; the check still runs behind it and has the last word.
+      const remembered = loadRememberedUser(phone);
+      if (remembered && !currentUser) {
+        currentUser = remembered;
+        showSchedule();
+        startCloud();
+        render();
+      }
       let entry = null;
       try {
         const doc = await db.collection(ALLOWED).doc(phone).get();
-        if (doc.exists) entry = doc.data() || {};
+        entry = doc.exists ? (doc.data() || {}) : null;
       } catch (e) {
-        // The rules deny this read to anyone not on the list, so a failure
-        // here means the same thing as a missing document.
         console.error("allow-list check", e);
+        if (gen !== authGeneration) return;
+        if (!isDenial(e)) {
+          // Couldn't reach the list. The session stays exactly as it was.
+          if (!currentUser) {
+            showLogin();
+            loginError("Couldn't reach the schedule just now. You're still signed in — this keeps retrying on its own. Sign in again below if you'd rather not wait.");
+          }
+          queueRecheck();
+          return;
+        }
       }
+      if (gen !== authGeneration) return;
+      recheckAttempts = 0;
       if (!entry) {
+        forgetRememberedUser();
+        currentUser = null;
+        stopCloud();
         await auth.signOut().catch(e => console.error("signOut", e));
         showPhoneStep();
         loginError(`${prettyPhone(phone) || "That number"} isn't on the access list for this schedule. Ask an admin to add it, then try again.`);
@@ -2136,6 +2218,7 @@
         phone,
         last4: phone.slice(-4)
       };
+      rememberUser(currentUser);
       showSchedule();
       startCloud();
       render();
@@ -2146,12 +2229,27 @@
         if (typeof firebase === "undefined") throw new Error("Firebase SDK failed to load");
         firebase.initializeApp(FIREBASE_CONFIG);
         db = firebase.firestore();
+        // Keep what Firestore has already sent on the device. Without it a
+        // read attempted before the network is back fails outright, and the
+        // allow-list check runs on every single reload. Has to come before
+        // any other Firestore call, and isn't available in private browsing.
+        db.enablePersistence({ synchronizeTabs: true })
+          .catch(e => console.warn("offline cache unavailable", (e && e.code) || e));
         auth = firebase.auth();
-        auth.onAuthStateChanged(handleAuthChange, err => {
+        const watchAuth = () => auth.onAuthStateChanged(handleAuthChange, err => {
           console.error("auth state", err);
+          // Firebase couldn't tell us anything — which is not the same as the
+          // session having ended. Leave anyone already signed in where they are.
+          if (currentUser) return;
           showLogin();
           loginError("Couldn't reach the sign-in service. Check your connection and reload.");
         });
+        // LOCAL is the SDK default, but saying it outright means a change of
+        // default can never quietly downgrade these to per-tab sessions that
+        // end when Safari discards the tab.
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+          .catch(e => console.error("auth persistence", e))
+          .then(watchAuth, watchAuth);
       } catch (e) {
         console.error("firebase init", e);
         setCloud(false);
@@ -2435,6 +2533,12 @@
       const h = rowHeight();
       if (h !== PX_PER_HOUR) { PX_PER_HOUR = h; render(); }
     });
+
+    // Coming back to a tab Safari had put to sleep, or getting a signal back,
+    // is the moment a check that couldn't finish should finish.
+    window.addEventListener("online", runRecheck);
+    window.addEventListener("pageshow", runRecheck);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) runRecheck(); });
 
     // ---------- Start ----------
     dateInput.value = ymd(new Date());
