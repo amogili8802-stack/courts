@@ -2111,7 +2111,10 @@
         } else if (e.code === "auth/captcha-check-failed" || e.code === "auth/unauthorized-domain") {
           loginError("This site isn't an authorised domain for sign-in yet. Add it under Firebase → Authentication → Settings → Authorised domains.");
         } else if (e.code === "auth/operation-not-allowed") {
-          loginError("Phone sign-in isn't switched on for this Firebase project yet.");
+          // Firebase returns this both for a disabled provider and for a
+          // number whose region the SMS region policy doesn't allow, so name
+          // both — the raw reason is in the console message.
+          loginError("Firebase won't send to this number. Either phone sign-in is switched off for the project, or this number's region isn't allowed under Authentication → Settings → SMS region policy.");
         } else {
           loginError("Couldn't send the code. Please try again.");
         }
