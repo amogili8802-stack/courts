@@ -336,6 +336,9 @@
       flex-wrap: wrap;
     }
     .legend-item { display: flex; align-items: center; gap: 8px; }
+    /* Sized in em so it tracks the legend's own text, which is a step smaller
+       on phones. line-height keeps the taller glyph from stretching the line. */
+    .drag-arrow { font-size: 1.25em; line-height: 1; vertical-align: -0.06em; }
     .swatch {
       width: 14px; height: 14px;
       border-radius: 4px;
@@ -907,7 +910,7 @@
            picks that by default, so the phone drew a fat colour glyph where the
            laptop drew a plain arrow. The selector pins it to the text one; it is
            invisible in the source but load-bearing, so don't strip it. -->
-      <div class="legend-item legend-drag"><span>↕︎ <span class="hover-only">Hold + drag</span><span class="touch-only">Press and hold, then drag</span> for 15 / 30 / 45 min lessons</span></div>
+      <div class="legend-item legend-drag"><span><span class="drag-arrow">↕︎</span> <span class="hover-only">Hold + drag</span><span class="touch-only">Press and hold, then drag</span> for 15 / 30 / 45 min lessons</span></div>
     </div>
 
     <div class="edit-log" id="editLog"></div>
