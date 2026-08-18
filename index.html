@@ -769,6 +769,7 @@
       font-family: inherit;
       font-size: 13px;
     }
+    .custom-coach-name { margin-top: 8px; }
     .weekday-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .weekday-picker label {
       font-weight: 400;
@@ -1029,7 +1030,7 @@
         </div>
       </div>
       <div class="form-grid">
-        <div class="form-row"><label>Coach</label><select id="recurringCoach"></select></div>
+        <div class="form-row"><label>Coach</label><select id="recurringCoach"></select><input type="text" id="recurringCustomCoach" class="custom-coach-name" placeholder="Type a name…" maxlength="40" hidden></div>
         <div class="form-row"><label>Frequency</label><select id="recurringFrequency"><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option></select></div>
       </div>
       <div class="form-grid">
@@ -1081,6 +1082,9 @@
     const COACHES = { Anjali: "#3D5A6D", Alena: "#6D4C5C", Lou: "#3D4F40", Byron: "#2F1F0F", Jack: "#3A3F47" };
     // Colour for bookings made under a typed-in ("Custom") name. Mirrors --custom.
     const CUSTOM_COLOR = "#a32e24";
+    // Value of the recurring modal's "Custom" option. Not a coach name, so it
+    // can't collide with one.
+    const CUSTOM_COACH = "__custom__";
     const DURATIONS = [30, 45, 60];
 
     // ---------- State ----------
@@ -2190,18 +2194,43 @@
         opt.textContent = c;
         coachSel.appendChild(opt);
       }
+      // Last, after the named coaches, matching the coach grid's Custom button.
+      const customOpt = document.createElement("option");
+      customOpt.value = CUSTOM_COACH;
+      customOpt.textContent = "Custom…";
+      coachSel.appendChild(customOpt);
+      document.getElementById("recurringCustomCoach").value = "";
+      syncRecurringCoach();
       if (activeCtx) {
         document.getElementById("recurringCourt").value = activeCtx.court;
         const snapped = Math.floor(activeCtx.start / 30) * 30;
         timeSel.value = toHM(snapped);
         document.getElementById("recurringDuration").value = String(activeCtx.duration || 60);
-        if (activeCtx.booking && activeCtx.booking.coach) coachSel.value = activeCtx.booking.coach;
+        if (activeCtx.booking && activeCtx.booking.coach) setRecurringCoach(activeCtx.booking.coach);
         const dow = new Date(dateInput.value + "T12:00:00").getDay();
         document.querySelectorAll("#weekdayPicker input").forEach(i => { i.checked = parseInt(i.value) === dow; });
       }
       document.getElementById("recurringStart").value = dateInput.value;
       document.getElementById("recurringMsg").classList.remove("show");
       document.getElementById("recurringBackdrop").classList.add("show");
+    }
+
+    // The name box only belongs on screen while Custom is the selection.
+    function syncRecurringCoach() {
+      const sel = document.getElementById("recurringCoach");
+      document.getElementById("recurringCustomCoach").hidden = sel.value !== CUSTOM_COACH;
+    }
+
+    // A booking made under a typed-in name has no option of its own. Select
+    // Custom and put the name in the box, rather than letting the select fall
+    // back to whichever coach happens to be first and quietly change who the
+    // series is for.
+    function setRecurringCoach(coach) {
+      const sel = document.getElementById("recurringCoach");
+      const box = document.getElementById("recurringCustomCoach");
+      if (COACHES[coach]) { sel.value = coach; box.value = ""; }
+      else { sel.value = CUSTOM_COACH; box.value = coach; }
+      syncRecurringCoach();
     }
 
     function saveRecurring() {
@@ -2213,13 +2242,22 @@
         msg.classList.add("show");
         return;
       }
+      let coach = document.getElementById("recurringCoach").value;
+      if (coach === CUSTOM_COACH) {
+        coach = document.getElementById("recurringCustomCoach").value.trim();
+        if (!coach) {
+          msg.textContent = "Type a name for the custom coach.";
+          msg.classList.add("show");
+          return;
+        }
+      }
       const days = Array.from(document.querySelectorAll("#weekdayPicker input:checked")).map(i => parseInt(i.value));
       const rule = {
         id: newId("r"),
         court: document.getElementById("recurringCourt").value,
         time: document.getElementById("recurringTime").value,
         duration: parseInt(document.getElementById("recurringDuration").value),
-        coach: document.getElementById("recurringCoach").value,
+        coach,
         start, end,
         frequency: document.getElementById("recurringFrequency").value,
         days: days.length ? days : [new Date(start + "T12:00:00").getDay()],
@@ -2586,6 +2624,11 @@
       document.getElementById("recurringBackdrop").classList.remove("show");
     });
     document.getElementById("recurringSave").addEventListener("click", saveRecurring);
+    document.getElementById("recurringCoach").addEventListener("change", () => {
+      syncRecurringCoach();
+      const box = document.getElementById("recurringCustomCoach");
+      if (!box.hidden) box.focus();
+    });
 
     document.addEventListener("click", e => {
       if (Date.now() < suppressClicksUntil) return;
