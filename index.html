@@ -616,6 +616,31 @@
       font-weight: 650;
     }
     .menu-msg.show { display: block; }
+    /* Shown in the new-booking menu when the open slot you clicked is open
+       because a recurring lesson was skipped there. */
+    .skip-restore {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin: 2px 2px 6px;
+      padding: 8px 10px;
+      background: #f9f5ed;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 650;
+      color: var(--muted);
+    }
+    .skip-restore.show { display: flex; }
+    .skip-restore span { flex: 1; }
+    .skip-restore button {
+      width: auto;
+      flex: none;
+      height: 30px;
+      padding: 0 11px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
     .coaches-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -908,6 +933,10 @@
     <div class="menu-msg" id="menuMsg"></div>
 
     <div id="newSection">
+      <div class="skip-restore" id="skipRestore">
+        <span id="skipRestoreText"></span>
+        <button type="button" id="skipRestoreBtn">Put it back</button>
+      </div>
       <div class="menu-label">Start time:</div>
       <div style="padding: 0 2px 6px;"><select id="startSelect"></select></div>
       <div class="menu-label" id="durationLabel">Duration:</div>
@@ -1464,7 +1493,8 @@
     }
 
     // All blocks to draw for a court on a date: stored bookings + live recurring occurrences.
-    // A stored entry with status "skip" suppresses its rule's occurrence and renders as red "Cancelled".
+    // A stored entry with status "skip" suppresses its rule's occurrence for the day and is not
+    // drawn at all — skipping a lesson frees the court, so the slot reads Open like any other.
     function blocksFor(date, court) {
       const day = getDay(date);
       const stored = day.courts[court];
@@ -1472,7 +1502,10 @@
       const skippedRules = new Set();
       for (const id of Object.keys(stored)) {
         const b = stored[id];
-        if (b.status === "skip" && b.ruleId) skippedRules.add(b.ruleId);
+        if (b.status === "skip") {
+          if (b.ruleId) skippedRules.add(b.ruleId);
+          continue;
+        }
         blocks.push({ ...b, id, virtual: false });
       }
       for (const rule of recurringRules) {
@@ -1491,6 +1524,23 @@
       }
       return blocks;
     }
+    // The skip covering a span, if the rule behind it would still run today.
+    // Nothing on the grid shows a skipped occurrence any more, so this is how
+    // the new-booking menu can offer to put one back. A skip whose series has
+    // since been cancelled has nothing to restore, so it doesn't count.
+    function skipAt(date, court, start, duration) {
+      const stored = getDay(date).courts[court] || {};
+      for (const id of Object.keys(stored)) {
+        const b = stored[id];
+        if (b.status !== "skip" || !b.ruleId) continue;
+        if (start >= b.start + b.duration || b.start >= start + duration) continue;
+        const rule = recurringRules.find(r => r.id === b.ruleId);
+        if (!rule || rule.court !== court || !appliesOnDate(rule, date)) continue;
+        return { ...b, id, coach: b.coach || rule.coach };
+      }
+      return null;
+    }
+
     // Occupied intervals (things a new booking may not overlap). Skips/cancellations free the court.
     function occupiedFor(date, court, excludeId) {
       return blocksFor(date, court).filter(b =>
@@ -1671,7 +1721,9 @@
     function makeBlock(b, court) {
       const el = document.createElement("div");
       el.className = "block";
-      const isCancelled = b.status === "cancelled" || b.status === "skip";
+      // Only ever a legacy "cancelled" entry from before skips stopped being
+      // drawn — nothing in the app writes that status any more.
+      const isCancelled = b.status === "cancelled";
       if (isCancelled) el.classList.add("cancelled");
       else if (COACHES[b.coach]) el.style.background = COACHES[b.coach];
       else el.style.background = CUSTOM_COLOR;
@@ -1692,7 +1744,7 @@
       // already shows how long it runs, so the start time is enough there.
       range.textContent = isPhone() ? fmtMin(b.start) : fmtRange(b.start, b.duration);
       el.appendChild(range);
-      if (b.virtual || (b.ruleId && b.status === "skip")) {
+      if (b.virtual) {
         const rec = document.createElement("span");
         rec.className = "rec";
         rec.textContent = "↻";
@@ -1860,6 +1912,17 @@
       document.getElementById("slotNote").value = "";
       setMenuMode("new", {});
       syncDurationButtons();
+      // If this slot is open only because a recurring lesson was skipped here,
+      // say so and offer the way back — with nothing drawn on the grid, there
+      // is otherwise no handle on a skip once it's made.
+      const skipped = skipAt(dateInput.value, court, activeCtx.start, activeCtx.duration);
+      const restoreRow = document.getElementById("skipRestore");
+      restoreRow.classList.toggle("show", Boolean(skipped));
+      restoreRow.dataset.skipId = skipped ? skipped.id : "";
+      if (skipped) {
+        document.getElementById("skipRestoreText").textContent =
+          `${skipped.coach}'s recurring slot was skipped today.`;
+      }
       render();
       positionMenu(clickEvent.clientX, clickEvent.clientY);
     }
@@ -1871,9 +1934,8 @@
         start: block.start, duration: block.duration,
         bookingId: block.id, booking: block
       };
-      const isSkip = block.status === "skip";
       const isCancelledOneOff = block.status === "cancelled";
-      const title = isSkip || isCancelledOneOff ? "Cancelled slot" : `Court ${court} — booking`;
+      const title = isCancelledOneOff ? "Cancelled slot" : `Court ${court} — booking`;
       document.getElementById("menuTitle").textContent = title;
 
       const summary = document.getElementById("bookingSummary");
@@ -1882,11 +1944,11 @@
       whoRow.className = "who-row";
       const who = document.createElement("span");
       who.className = "who";
-      who.textContent = isSkip || isCancelledOneOff
+      who.textContent = isCancelledOneOff
         ? "Cancelled" + (block.coach ? ` (was ${block.coach})` : "")
         : block.coach + (block.virtual ? " · recurring ↻" : "");
       whoRow.appendChild(who);
-      if (!isSkip && !isCancelledOneOff) {
+      if (!isCancelledOneOff) {
         const editBtn = document.createElement("button");
         editBtn.type = "button";
         editBtn.className = "edit-coach-btn";
@@ -1913,12 +1975,12 @@
       document.getElementById("slotNote").value = block.note || "";
 
       setMenuMode("edit", {
-        canDelete: !block.virtual && !isSkip && !isCancelledOneOff,
+        canDelete: !block.virtual && !isCancelledOneOff,
         canSkip: block.virtual,
         canCancelSeries: !!block.ruleId,
-        canRestore: isSkip || isCancelledOneOff,
-        hideNote: isSkip || isCancelledOneOff,
-        canMakeRecurring: !block.virtual && !isSkip && !isCancelledOneOff
+        canRestore: isCancelledOneOff,
+        hideNote: isCancelledOneOff,
+        canMakeRecurring: !block.virtual && !isCancelledOneOff
       });
       render();
       positionMenu(clickEvent.clientX, clickEvent.clientY);
@@ -2086,6 +2148,21 @@
         deleteRule(ruleId);
         if (b) logToDay(dateInput.value, `Cancelled recurring series on Court ${court} · ${fmtRange(b.start, b.duration)}`);
       }
+    }
+
+    // Deleting the skip marker is all it takes — the rule's occurrence comes
+    // back on the next render.
+    function restoreSkippedSlot() {
+      const id = document.getElementById("skipRestore").dataset.skipId;
+      if (!id || !activeCtx) return;
+      const court = activeCtx.court, date = dateInput.value;
+      const day = getDay(date);
+      const entry = day.courts[court][id];
+      if (!entry) return;
+      delete day.courts[court][id];
+      activeCtx = null;
+      menu.classList.remove("show");
+      saveDay(date, day, `Restored the recurring booking on Court ${court} · ${fmtRange(entry.start, entry.duration)}`);
     }
 
     function restoreSlot() {
@@ -2501,6 +2578,7 @@
     document.getElementById("skipOccurrence").addEventListener("click", skipOccurrence);
     document.getElementById("cancelSeries").addEventListener("click", cancelSeries);
     document.getElementById("restoreBtn").addEventListener("click", restoreSlot);
+    document.getElementById("skipRestoreBtn").addEventListener("click", restoreSkippedSlot);
     document.getElementById("closeMenu").addEventListener("click", closeMenu);
     document.getElementById("makeRecurringBtn").addEventListener("click", openRecurringModal);
     document.getElementById("makeRecurringEditBtn").addEventListener("click", openRecurringModal);
