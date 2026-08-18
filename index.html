@@ -2105,7 +2105,10 @@
         if (e.code === "auth/invalid-phone-number") {
           loginError("Firebase didn't accept that number. Check the digits and try again.");
         } else if (e.code === "auth/too-many-requests") {
-          loginError("Too many attempts from here. Wait a few minutes and try again.");
+          // Google-side abuse protection, not something the project can turn
+          // off or raise. Clears on its own; say so rather than implying a
+          // few minutes will do it.
+          loginError("Too many sign-in attempts for this number. Firebase pauses new codes for a while — it lifts on its own, usually within an hour. Any device you're already signed in on keeps working.");
         } else if (e.code === "auth/quota-exceeded") {
           loginError("This project has hit its SMS limit for now. Try again later.");
         } else if (e.code === "auth/captcha-check-failed" || e.code === "auth/unauthorized-domain") {
