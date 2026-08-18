@@ -1786,19 +1786,47 @@
     }
     function clearMsg() { menuMsg.classList.remove("show"); }
 
+    // The tap the menu was opened from, kept so the position can be worked out
+    // again later. Sections that open inside the menu — the coach picker, the
+    // custom-name row — make it taller after it has already been placed.
+    let menuAnchor = null;
+
     function positionMenu(x, y) {
       menu.classList.add("show");
+      menuAnchor = { x, y };
+      clampMenu();
+    }
+
+    function clampMenu() {
       // On phones the stylesheet docks the menu to the bottom of the screen,
       // so there's no tap-anchored position to compute.
-      if (window.matchMedia("(max-width: 720px)").matches) return;
+      if (!menuAnchor || window.matchMedia("(max-width: 720px)").matches) return;
       const mw = menu.offsetWidth, mh = menu.offsetHeight;
-      let left = x + 14, top = y;
-      if (left + mw > window.innerWidth - 8) left = x - mw - 14;
+      let left = menuAnchor.x + 14, top = menuAnchor.y;
+      if (left + mw > window.innerWidth - 8) left = menuAnchor.x - mw - 14;
       if (left < 8) left = 8;
       if (top + mh > window.innerHeight - 8) top = window.innerHeight - mh - 8;
       if (top < 8) top = 8;
       menu.style.left = left + "px";
       menu.style.top = top + "px";
+    }
+
+    // Growing the menu used to leave its top where the tap put it, so opening
+    // the coach picker on a booking late in the day pushed everything below it
+    // off the bottom of the screen — and the menu is fixed, so nothing could
+    // scroll it back. The sections that open call clampMenu themselves, which
+    // lands the new position in the same frame; this catches anything else
+    // that changes the height, a frame later and with a visible hop, so it's a
+    // backstop and not the mechanism.
+    new ResizeObserver(() => clampMenu()).observe(menu);
+
+    // Bring something just revealed into view inside the menu, without
+    // scrolling the page behind it. Moving the menu shifts both rectangles
+    // equally, so this is unaffected by the re-clamp that follows.
+    function revealInMenu(el) {
+      const mr = menu.getBoundingClientRect(), er = el.getBoundingClientRect();
+      if (er.bottom > mr.bottom - 8) menu.scrollTop += er.bottom - mr.bottom + 8;
+      else if (er.top < mr.top + 8) menu.scrollTop -= mr.top - er.top + 8;
     }
 
     function setMenuMode(mode, opts = {}) {
@@ -1867,9 +1895,12 @@
         editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 19.5h3.6L19.4 8.2a1.9 1.9 0 0 0 0-2.7l-.9-.9a1.9 1.9 0 0 0-2.7 0L4.5 15.9v3.6z"/><path d="M14.6 6.6l2.8 2.8"/></svg>';
         editBtn.addEventListener("click", () => {
           const row = document.getElementById("coachEditRow");
-          row.style.display = row.style.display === "none" ? "block" : "none";
+          const opening = row.style.display === "none";
+          row.style.display = opening ? "block" : "none";
           document.getElementById("customCoachRow").classList.remove("show");
           document.getElementById("editCustomCoachRow").classList.remove("show");
+          clampMenu();
+          if (opening) revealInMenu(row);
         });
         whoRow.appendChild(editBtn);
       }
@@ -2424,6 +2455,8 @@
         const input = customRowEl.querySelector("input");
         input.value = "";
         input.focus();
+        clampMenu();
+        revealInMenu(customRowEl);
       });
       gridEl.appendChild(customBtn);
     }
