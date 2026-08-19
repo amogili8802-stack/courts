@@ -1120,7 +1120,7 @@
     // Shown on the login screen. A phone can sit on a cached copy for a long
     // time, and twice now a fix has looked broken because the device was still
     // running the old one. Bump this whenever something ships.
-    const BUILD = "2026-08-18e";
+    const BUILD = "2026-08-18f";
     const DURATIONS = [30, 45, 60];
 
     // ---------- State ----------
@@ -1278,9 +1278,29 @@
     // then everything went at once, which is Safari clearing storage rather
     // than anything here deciding to sign someone out.
     const LAST_END_KEY = "lagcc:lastSessionEnd";
+    const SESSION_START_KEY = "lagcc:sessionStart";
     function noteSessionEnd(how) {
-      try { localStorage.setItem(LAST_END_KEY, JSON.stringify({ how, at: new Date().toISOString() })); }
-      catch (e) { console.error("noteSessionEnd", e); }
+      try {
+        const started = parseInt(localStorage.getItem(SESSION_START_KEY) || "0", 10);
+        const tokenErr = JSON.parse(localStorage.getItem("lagcc:lastTokenError") || "null");
+        localStorage.setItem(LAST_END_KEY, JSON.stringify({
+          how,
+          at: new Date().toISOString(),
+          // How long it lasted separates the causes: an hour points at the
+          // token, days at the browser emptying its storage.
+          lastedMin: started ? Math.round((Date.now() - started) / 60000) : null,
+          online: navigator.onLine,
+          tokenError: tokenErr && tokenErr.code || null
+        }));
+        localStorage.removeItem(SESSION_START_KEY);
+      } catch (e) { console.error("noteSessionEnd", e); }
+    }
+    function noteSessionStart() {
+      try {
+        if (!localStorage.getItem(SESSION_START_KEY)) {
+          localStorage.setItem(SESSION_START_KEY, String(Date.now()));
+        }
+      } catch (e) { console.error("noteSessionStart", e); }
     }
     function lastSessionEnd() {
       try { return JSON.parse(localStorage.getItem(LAST_END_KEY) || "null"); }
@@ -2535,6 +2555,24 @@
       loginError("Your browser cleared this site's saved sign-in — Safari does that to sites it hasn't seen for a while. Nobody logged you out. Your number's filled in; a new code brings you straight back.");
     }
 
+    // getIdToken() renews only when the token has expired or is about to, so
+    // this is cheap on a quick tab switch and does real work after a sleep.
+    // If the refresh is what's failing, this is where that gets caught — the
+    // SDK would otherwise just report the user as gone with no reason given.
+    let lastTokenError = null;
+    async function refreshToken(why) {
+      if (!auth || !auth.currentUser) return;
+      try {
+        await auth.currentUser.getIdToken();
+        lastTokenError = null;
+      } catch (e) {
+        lastTokenError = { code: (e && e.code) || String(e), why, at: new Date().toISOString() };
+        console.error("token refresh failed on " + why, e);
+        try { localStorage.setItem("lagcc:lastTokenError", JSON.stringify(lastTokenError)); }
+        catch (err) { /* nothing to do if storage is gone too */ }
+      }
+    }
+
     async function handleAuthChange(user) {
       const gen = ++authGeneration;
       clearRecheck();
@@ -2595,6 +2633,7 @@
         last4: phone.slice(-4)
       };
       rememberUser(currentUser);
+      noteSessionStart();
       showSchedule();
       startCloud();
       render();
@@ -2994,19 +3033,36 @@
     });
 
     // Coming back to a tab Safari had put to sleep, or getting a signal back,
-    // is the moment a check that couldn't finish should finish.
-    window.addEventListener("online", runRecheck);
-    window.addEventListener("pageshow", runRecheck);
-    document.addEventListener("visibilitychange", () => { if (!document.hidden) runRecheck(); });
+    // is the moment a check that couldn't finish should finish — and the moment
+    // to deal with the token, which only lasts an hour. A phone that sleeps
+    // through that expiry wakes holding a stale one, and every rule in
+    // firestore.rules needs request.auth, so the first thing it tries is
+    // refused. Refreshing here is what keeps a stale token from ever reaching
+    // them; sleeping longer than an hour is precisely the reported case.
+    function onResume(why) {
+      refreshToken(why);
+      runRecheck();
+    }
+    window.addEventListener("online", () => onResume("online"));
+    window.addEventListener("pageshow", () => onResume("pageshow"));
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) onResume("foreground"); });
 
     // ---------- Start ----------
     (function stampBuild() {
       const last = lastSessionEnd();
-      const how = last && last.how === "logout" ? " · last ended: logged out"
-        : last && last.how === "removed-from-allow-list" ? " · last ended: removed from access list"
-        : last && last.how === "credential-gone" ? " · last ended: browser cleared its storage"
-        : "";
-      document.getElementById("loginBuild").textContent = "Build " + BUILD + how;
+      const names = {
+        "logout": "logged out",
+        "removed-from-allow-list": "removed from access list",
+        "credential-gone": "sign-in vanished"
+      };
+      let line = "Build " + BUILD;
+      if (last && names[last.how]) {
+        line += " · last: " + names[last.how];
+        if (last.lastedMin != null) line += " after " + last.lastedMin + " min";
+        if (last.tokenError) line += " · " + last.tokenError;
+        if (last.online === false) line += " · offline";
+      }
+      document.getElementById("loginBuild").textContent = line;
     })();
 
     dateInput.value = ymd(new Date());
