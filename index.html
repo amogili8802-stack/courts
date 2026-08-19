@@ -703,6 +703,24 @@
       font-size: 12px;
     }
     .duration-buttons button.active { background: #e8d8c4; font-weight: 750; }
+    .court-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 6px;
+      padding: 0 2px;
+    }
+    .court-buttons button {
+      height: 34px;
+      text-align: center;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 12px;
+    }
+    .court-buttons button.active { background: #e8d8c4; font-weight: 750; }
+    /* The court it's already on is disabled too, but it's marked as current
+       rather than unavailable, so it keeps its full weight. */
+    .court-buttons button:disabled:not(.active) { opacity: .45; cursor: not-allowed; }
     .duration-buttons button:disabled { opacity: .45; cursor: not-allowed; }
     .booking-summary {
       margin: 2px 2px 6px;
@@ -774,6 +792,7 @@
       font-size: 13px;
     }
     .custom-coach-name { margin-top: 8px; }
+    .login-build { margin-top: 10px; text-align: center; font-size: 11px; color: var(--muted); opacity: .7; }
     .weekday-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .weekday-picker label {
       font-weight: 400;
@@ -867,6 +886,7 @@
         padding: 12px;
       }
       .coaches-grid button { height: 42px; }
+      .court-buttons button { height: 42px; }
       .duration-buttons button { height: 40px; }
       .custom-coach-row input, .custom-coach-row button { height: 40px; }
     }
@@ -973,6 +993,8 @@
     </div>
 
     <div id="editSection">
+      <div class="menu-label" id="courtMoveLabel">Move to court:</div>
+      <div class="court-buttons" id="courtButtons"></div>
       <div class="menu-sep"></div>
       <button id="makeRecurringEditBtn">↻ Make recurring...</button>
       <button id="deleteBooking" class="danger">Cancel booking</button>
@@ -1011,6 +1033,7 @@
       </form>
 
       <p class="login-note">Only numbers on the schedule's access list can sign in. Your name labels the changes you make in the edit history.</p>
+      <p class="login-build" id="loginBuild"></p>
       <div id="recaptchaContainer"></div>
     </div>
   </div>
@@ -1094,6 +1117,10 @@
     // Value of the recurring modal's "Custom" option. Not a coach name, so it
     // can't collide with one.
     const CUSTOM_COACH = "__custom__";
+    // Shown on the login screen. A phone can sit on a cached copy for a long
+    // time, and twice now a fix has looked broken because the device was still
+    // running the old one. Bump this whenever something ships.
+    const BUILD = "2026-08-18e";
     const DURATIONS = [30, 45, 60];
 
     // ---------- State ----------
@@ -1246,12 +1273,29 @@
     // decides what's on screen; the Firestore rules are still the real gate,
     // so a stale copy can't buy access to anything. Logging out clears it.
     const USER_KEY = "lagcc:user";
-    function loadRememberedUser(phone) {
+    // How the last session ended, kept so an unexplained sign-out can be told
+    // apart from the browser having emptied the site. If this is missing too
+    // then everything went at once, which is Safari clearing storage rather
+    // than anything here deciding to sign someone out.
+    const LAST_END_KEY = "lagcc:lastSessionEnd";
+    function noteSessionEnd(how) {
+      try { localStorage.setItem(LAST_END_KEY, JSON.stringify({ how, at: new Date().toISOString() })); }
+      catch (e) { console.error("noteSessionEnd", e); }
+    }
+    function lastSessionEnd() {
+      try { return JSON.parse(localStorage.getItem(LAST_END_KEY) || "null"); }
+      catch (e) { return null; }
+    }
+    function peekRememberedUser() {
       try {
         const saved = JSON.parse(localStorage.getItem(USER_KEY) || "null");
-        if (!saved || saved.phone !== phone || typeof saved.name !== "string") return null;
-        return { name: saved.name, phone: saved.phone, last4: saved.last4 || phone.slice(-4) };
+        return saved && typeof saved.name === "string" && saved.phone ? saved : null;
       } catch (e) { return null; }
+    }
+    function loadRememberedUser(phone) {
+      const saved = peekRememberedUser();
+      if (!saved || saved.phone !== phone) return null;
+      return { name: saved.name, phone: saved.phone, last4: saved.last4 || phone.slice(-4) };
     }
     function rememberUser(user) {
       try { localStorage.setItem(USER_KEY, JSON.stringify(user)); }
@@ -1350,7 +1394,9 @@
     function logout() {
       editLogOpen = false;
       closeMenu();
+      deliberateLogout = true;
       clearLocalSchedule();
+      noteSessionEnd("logout");
       if (auth) {
         auth.signOut().catch(e => console.error("signOut", e));
       } else {
@@ -1904,6 +1950,8 @@
       document.getElementById("restoreBtn").style.display = opts.canRestore ? "block" : "none";
       document.getElementById("noteSection").style.display = opts.hideNote ? "none" : "block";
       document.getElementById("makeRecurringEditBtn").style.display = opts.canMakeRecurring ? "block" : "none";
+      document.getElementById("courtMoveLabel").style.display = opts.canMoveCourt ? "block" : "none";
+      document.getElementById("courtButtons").style.display = opts.canMoveCourt ? "grid" : "none";
       document.getElementById("coachEditRow").style.display = "none";
       document.getElementById("customCoachRow").classList.remove("show");
       document.getElementById("editCustomCoachRow").classList.remove("show");
@@ -1993,8 +2041,10 @@
         canCancelSeries: !!block.ruleId,
         canRestore: isCancelledOneOff,
         hideNote: isCancelledOneOff,
-        canMakeRecurring: !block.virtual && !isCancelledOneOff
+        canMakeRecurring: !block.virtual && !isCancelledOneOff,
+        canMoveCourt: !isCancelledOneOff
       });
+      if (!isCancelledOneOff) buildCourtButtons(court, block);
       render();
       positionMenu(clickEvent.clientX, clickEvent.clientY);
     }
@@ -2082,6 +2132,68 @@
     }
 
     // Reassign the coach on an existing booking (e.g. to fix an accidental click).
+    // The court as three buttons rather than a dropdown: one tap on a phone,
+    // one click on a laptop, and the courts that aren't free at that time are
+    // visibly not on offer. A recurring occurrence moves its whole series, the
+    // same way changing its coach or its length does.
+    function buildCourtButtons(court, block) {
+      const wrap = document.getElementById("courtButtons");
+      document.getElementById("courtMoveLabel").textContent =
+        block.virtual ? "Move series to court:" : "Move to court:";
+      wrap.innerHTML = "";
+      for (const c of COURTS) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "Court " + c;
+        if (c === court) {
+          btn.classList.add("active");
+          btn.disabled = true;
+        } else if (overlaps(block.start, block.duration, occupiedFor(dateInput.value, c))) {
+          btn.disabled = true;
+          btn.title = `Court ${c} is booked at that time`;
+        } else {
+          btn.addEventListener("click", () => moveBookingToCourt(c));
+        }
+        wrap.appendChild(btn);
+      }
+    }
+
+    function moveBookingToCourt(newCourt) {
+      if (!activeCtx || activeCtx.mode !== "edit") return;
+      const b = activeCtx.booking;
+      const oldCourt = activeCtx.court;
+      if (!b || newCourt === oldCourt) return;
+      // Re-checked at the moment of the move: the buttons were drawn when the
+      // menu opened, and someone else's booking may have landed since.
+      if (overlaps(b.start, b.duration, occupiedFor(dateInput.value, newCourt))) {
+        showMsg(`Court ${newCourt} is booked at ${fmtRange(b.start, b.duration)} now. Pick another.`);
+        buildCourtButtons(oldCourt, b);
+        return;
+      }
+      const label = `Moved ${b.coach} from Court ${oldCourt} to Court ${newCourt} · ${fmtRange(b.start, b.duration)}`;
+      if (b.virtual) {
+        const rule = recurringRules.find(r => r.id === b.ruleId);
+        activeCtx = null;
+        menu.classList.remove("show");
+        if (rule) {
+          saveRule({ ...rule, court: newCourt });
+          logToDay(dateInput.value, label + " (recurring series)");
+        }
+      } else {
+        const date = dateInput.value;
+        const day = getDay(date);
+        const id = activeCtx.bookingId;
+        const stored = day.courts[oldCourt][id];
+        activeCtx = null;
+        menu.classList.remove("show");
+        if (stored) {
+          delete day.courts[oldCourt][id];
+          day.courts[newCourt][id] = stored;
+          saveDay(date, day, label);
+        }
+      }
+    }
+
     function changeBookingCoach(newCoach) {
       if (!activeCtx || activeCtx.mode !== "edit") return;
       const b = activeCtx.booking;
@@ -2369,15 +2481,66 @@
       handleAuthChange(auth.currentUser);
     }
 
+    // Firebase saying there's no user is not the same as the session having
+    // ended. The SDK reads its store asynchronously, and a phone restoring a
+    // tab it discarded can have that read come back empty a moment before it
+    // comes back right. Pressing Log out is the only thing that ends a session
+    // on the spot. Anything else waits to see whether it reappears, and if it
+    // genuinely doesn't, says so plainly instead of just presenting a login
+    // screen as though nothing happened.
+    const AUTH_GONE_TRIES = 6;
+    const AUTH_GONE_WAIT = 1500;
+    let deliberateLogout = false;
+    let authGoneChecks = 0;
+    let authGoneTimer = null;
+    let authGoneSettled = false;   // already concluded, and already said so
+
+    function clearAuthGone() {
+      if (authGoneTimer) { clearTimeout(authGoneTimer); authGoneTimer = null; }
+      authGoneChecks = 0;
+    }
+
+    function endSession() {
+      currentUser = null;
+      stopCloud();
+      clearAuthGone();
+      showLogin();
+    }
+
+    function handleAuthGone() {
+      if (deliberateLogout) { deliberateLogout = false; authGoneSettled = true; endSession(); return; }
+      // Already been through this and explained it; a repeat says nothing new.
+      if (authGoneSettled) return;
+      const saved = peekRememberedUser();
+      // Nobody has ever signed in on this device, so there's nothing to lose.
+      if (!saved) { endSession(); return; }
+      if (authGoneChecks < AUTH_GONE_TRIES) {
+        authGoneChecks += 1;
+        if (authGoneTimer) clearTimeout(authGoneTimer);
+        authGoneTimer = setTimeout(() => {
+          authGoneTimer = null;
+          if (auth && auth.currentUser) { clearAuthGone(); handleAuthChange(auth.currentUser); }
+          else handleAuthGone();
+        }, AUTH_GONE_WAIT);
+        return;   // leave whatever is on screen alone while we wait
+      }
+      // The credential really is gone and nobody asked for that. Keep the
+      // number so getting back in is one code, and name the likely reason
+      // rather than letting it look like the schedule threw them out.
+      authGoneSettled = true;
+      endSession();
+      noteSessionEnd("credential-gone");
+      showPhoneStep();
+      document.getElementById("loginPhone").value = prettyPhone(saved.phone) || "";
+      loginError("Your browser cleared this site's saved sign-in — Safari does that to sites it hasn't seen for a while. Nobody logged you out. Your number's filled in; a new code brings you straight back.");
+    }
+
     async function handleAuthChange(user) {
       const gen = ++authGeneration;
       clearRecheck();
-      if (!user) {
-        currentUser = null;
-        stopCloud();
-        showLogin();
-        return;
-      }
+      if (!user) { handleAuthGone(); return; }
+      authGoneSettled = false;
+      clearAuthGone();
       const phone = user.phoneNumber || "";
       // Anyone who has passed the check on this device goes straight back to
       // the schedule; the check still runs behind it and has the last word.
@@ -2417,6 +2580,7 @@
       recheckAttempts = 0;
       const entry = doc.exists ? (doc.data() || {}) : null;
       if (!entry) {
+        noteSessionEnd("removed-from-allow-list");
         forgetRememberedUser();
         currentUser = null;
         stopCloud();
@@ -2447,6 +2611,16 @@
         // any other Firestore call, and isn't available in private browsing.
         db.enablePersistence({ synchronizeTabs: true })
           .catch(e => console.warn("offline cache unavailable", (e && e.code) || e));
+        // Where a browser honours this, the site's storage — which is where
+        // the sign-in lives — stops being a candidate for eviction. Safari
+        // grants it sparingly and never for a plain tab, so it isn't a fix on
+        // its own; it costs nothing and helps everywhere that does honour it.
+        if (navigator.storage && navigator.storage.persist) {
+          navigator.storage.persisted()
+            .then(already => already || navigator.storage.persist())
+            .then(ok => console.info("persistent storage:", ok))
+            .catch(e => console.warn("persistent storage unavailable", e));
+        }
         auth = firebase.auth();
         const watchAuth = () => auth.onAuthStateChanged(handleAuthChange, err => {
           console.error("auth state", err);
@@ -2454,7 +2628,9 @@
           // session having ended. Leave anyone already signed in where they are.
           if (currentUser) return;
           showLogin();
-          loginError("Couldn't reach the sign-in service. Check your connection and reload.");
+          loginError(peekRememberedUser()
+            ? "Couldn't reach the sign-in service just now — you haven't been logged out. This page will pick the session back up once you're online again."
+            : "Couldn't reach the sign-in service. Check your connection and reload.");
         });
         // LOCAL is the SDK default, but saying it outright means a change of
         // default can never quietly downgrade these to per-tab sessions that
@@ -2824,6 +3000,15 @@
     document.addEventListener("visibilitychange", () => { if (!document.hidden) runRecheck(); });
 
     // ---------- Start ----------
+    (function stampBuild() {
+      const last = lastSessionEnd();
+      const how = last && last.how === "logout" ? " · last ended: logged out"
+        : last && last.how === "removed-from-allow-list" ? " · last ended: removed from access list"
+        : last && last.how === "credential-gone" ? " · last ended: browser cleared its storage"
+        : "";
+      document.getElementById("loginBuild").textContent = "Build " + BUILD + how;
+    })();
+
     dateInput.value = ymd(new Date());
     recurringRules = loadLocalRecurring();
     setCloud(false);
