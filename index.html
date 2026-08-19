@@ -1120,7 +1120,7 @@
     // Shown on the login screen. A phone can sit on a cached copy for a long
     // time, and twice now a fix has looked broken because the device was still
     // running the old one. Bump this whenever something ships.
-    const BUILD = "2026-08-18f";
+    const BUILD = "2026-08-18g";
     const DURATIONS = [30, 45, 60];
 
     // ---------- State ----------
@@ -1294,6 +1294,7 @@
         }));
         localStorage.removeItem(SESSION_START_KEY);
       } catch (e) { console.error("noteSessionEnd", e); }
+      updateBuildStamp();
     }
     function noteSessionStart() {
       try {
@@ -1302,6 +1303,30 @@
         }
       } catch (e) { console.error("noteSessionStart", e); }
     }
+    // Drawn at boot and again every time the record changes. Computing it only
+    // at load was useless for the case it exists to explain: a session that
+    // ends an hour in writes its record long after the line was drawn, so the
+    // login screen kept showing the build alone and none of the reason.
+    function updateBuildStamp() {
+      const el = document.getElementById("loginBuild");
+      if (!el) return;
+      const last = lastSessionEnd();
+      const names = {
+        "logout": "logged out",
+        "removed-from-allow-list": "removed from access list",
+        "credential-gone": "sign-in vanished",
+        "sdk-reported-none": "sign-in vanished"
+      };
+      let line = "Build " + BUILD;
+      if (last && names[last.how]) {
+        line += " · last: " + names[last.how];
+        if (last.lastedMin != null) line += " after " + last.lastedMin + " min";
+        if (last.tokenError) line += " · " + last.tokenError;
+        if (last.online === false) line += " · offline";
+      }
+      el.textContent = line;
+    }
+
     function lastSessionEnd() {
       try { return JSON.parse(localStorage.getItem(LAST_END_KEY) || "null"); }
       catch (e) { return null; }
@@ -3048,22 +3073,7 @@
     document.addEventListener("visibilitychange", () => { if (!document.hidden) onResume("foreground"); });
 
     // ---------- Start ----------
-    (function stampBuild() {
-      const last = lastSessionEnd();
-      const names = {
-        "logout": "logged out",
-        "removed-from-allow-list": "removed from access list",
-        "credential-gone": "sign-in vanished"
-      };
-      let line = "Build " + BUILD;
-      if (last && names[last.how]) {
-        line += " · last: " + names[last.how];
-        if (last.lastedMin != null) line += " after " + last.lastedMin + " min";
-        if (last.tokenError) line += " · " + last.tokenError;
-        if (last.online === false) line += " · offline";
-      }
-      document.getElementById("loginBuild").textContent = line;
-    })();
+    updateBuildStamp();
 
     dateInput.value = ymd(new Date());
     recurringRules = loadLocalRecurring();
